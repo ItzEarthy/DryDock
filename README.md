@@ -11,7 +11,7 @@ DryDock is an ESP32-S3 based 3D printer filament inventory and environmental mon
 * ESP32-S3 Development Board
 * 2x AM2320 Temperature/Humidity Sensors
 * 1x 5kg Load Cell with HX711 Amplifier
-* 1x MFRC522 RFID/NFC Reader (13.56MHz)
+* 1x [MFRC522 RFID/NFC](https://github.com/ItzEarthy/DryDock/blob/main/sensors/RFID-RC522.md) Reader (13.56MHz)
 * 1x RGB LED (Common Cathode)
 * 4x 10k Ohm Resistors (Pull-ups for the AM2320s)
 
