@@ -1,0 +1,51 @@
+<div class="space-y-3">
+    {% if action_message %}
+    <div class="p-2 rounded text-sm border {% if action_error %}border-red-500 text-red-400{% else %}border-green-500 text-green-400{% endif %}">
+        {{ action_message }}
+    </div>
+    {% endif %}
+
+    {% if spoolman_spools %}
+        {% for spool in spoolman_spools %}
+            {% set spool_id = spool.id if spool.id is defined else (spool.spool_id if spool.spool_id is defined else '') %}
+            {% set filament = spool.filament if spool.filament is defined else None %}
+            {% set filament_name = filament.name if filament and filament.name is defined else (spool.name if spool.name is defined else 'Spool') %}
+            {% set material_name = filament.material if filament and filament.material is defined else (filament.material_name if filament and filament.material_name is defined else 'Unknown') %}
+            {% set vendor_name = filament.vendor.name if filament and filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament and filament.vendor is defined else 'Unknown') %}
+            {% set remaining = spool.remaining_weight if spool.remaining_weight is defined else (spool.weight if spool.weight is defined else 0) %}
+
+            <div class="p-3 rounded border space-y-2" style="border-color: var(--edge);">
+                <div class="flex justify-between items-center gap-2">
+                    <div>
+                        <div class="font-semibold">{{ filament_name }}</div>
+                        <div class="text-xs soft-text">{{ material_name }} · {{ vendor_name }}</div>
+                    </div>
+                    <div class="text-xs mono">ID {{ spool_id }}</div>
+                </div>
+
+                <div class="text-xs soft-text">Remaining: <span class="mono">{{ "%.1f"|format(remaining if remaining is not none else 0) }} g</span></div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                        <input type="hidden" name="action" value="reweigh">
+                        <input type="hidden" name="spool_id" value="{{ spool_id }}">
+                        <input type="hidden" name="weight" value="{{ weight_grams if weight_grams is not none else remaining }}">
+                        <button class="btn-outline text-xs w-full">Re-weigh</button>
+                    </form>
+                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                        <input type="hidden" name="action" value="mark_used">
+                        <input type="hidden" name="spool_id" value="{{ spool_id }}">
+                        <button class="btn-outline text-xs w-full">Mark Used</button>
+                    </form>
+                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" name="spool_id" value="{{ spool_id }}">
+                        <button class="btn-outline text-xs w-full" style="color: var(--danger); border-color: color-mix(in srgb, var(--danger) 65%, var(--edge));">Remove</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+    <div class="text-sm soft-text border rounded p-3" style="border-color: var(--edge);">No active spools returned from Spoolman.</div>
+    {% endif %}
+</div>

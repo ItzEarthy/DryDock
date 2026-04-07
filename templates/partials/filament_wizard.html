@@ -1,0 +1,12 @@
+<div class="max-w-3xl mx-auto card">
+    <div class="flex justify-between items-center gap-3 mb-4">
+        <div>
+            <h3 class="text-xl font-bold">Update Filament Wizard</h3>
+            <p class="text-xs soft-text">Clear and scan, add spool, wait for hardening, then confirm sync.</p>
+        </div>
+        <button class="btn-outline" onclick="closeModal()">Close</button>
+    </div>
+
+    <div id="wizard-result" class="mb-3"></div>
+    <div id="wizard-body" hx-get="/wizard/step/clear_scan" hx-trigger="load" hx-swap="innerHTML"></div>
+</div>
