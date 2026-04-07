@@ -3,44 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DryDock Companion</title>
+    <title>DryDock</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #000000; color: #FFFFFF; font-family: sans-serif; }
-        .input-dark { background: #000000; border: 1px solid #A3A3A1; color: #FFFFFF; padding: 0.5rem; border-radius: 0.375rem; width: 100%; outline: none; }
-        .input-dark:focus { border-color: #09395F; }
-        .btn-blue { background: #09395F; color: #FFFFFF; padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
-        .btn-blue:hover { opacity: 0.8; }
-        .btn-gray { background: #A3A3A1; color: #000000; padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
-        .btn-gray:hover { opacity: 0.8; }
+        .input-dark { background: #000; border: 1px solid #A3A3A1; color: #FFF; padding: 0.5rem; border-radius: 0.375rem; width: 100%; }
+        .btn-blue { background: #09395F; color: #FFF; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: bold; }
+        .btn-gray { background: #A3A3A1; color: #000; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: bold; }
         .card { border: 1px solid #A3A3A1; padding: 1.25rem; border-radius: 0.5rem; background: #050505; }
-        .nav-link { color: #FFFFFF; font-weight: bold; padding: 0.5rem 1rem; border-radius: 0.25rem; transition: background 0.2s; }
-        .nav-link:hover { background: #09395F; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .status-good { background-color: #35AB57; box-shadow: 0 0 8px #35AB57; }
-        .status-bad { background-color: #E72A2E; box-shadow: 0 0 8px #E72A2E; }
+        .nav-link { color: #FFF; font-weight: bold; padding: 0.5rem 1rem; border-radius: 0.25rem; }
+        .nav-link:hover, .nav-active { background: #09395F; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dot-g { background: #35AB57; box-shadow: 0 0 8px #35AB57; }
+        .dot-r { background: #E72A2E; box-shadow: 0 0 8px #E72A2E; }
     </style>
 </head>
 <body class="p-6 max-w-6xl mx-auto space-y-6">
-    <header class="border-b border-[#A3A3A1] pb-4 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+    <header class="border-b border-[#A3A3A1] pb-4 mb-6 flex justify-between items-center">
         <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-[#A3A3A1] bg-[#09395F] flex-shrink-0">
-                <img src="/static/logo.png" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'">
+            <div class="w-16 h-16 rounded-full border-2 border-[#A3A3A1] bg-[#09395F] overflow-hidden">
+                <img src="/static/logo.png" onerror="this.style.display='none'">
             </div>
             <div>
-                <h1 class="text-3xl font-bold text-[#FFFFFF] uppercase tracking-wide">DryDock</h1>
-                <p class="text-[#A3A3A1] text-sm">Filament Inventory & Environmental Monitor</p>
+                <h1 class="text-3xl font-bold uppercase text-white">DryDock</h1>
+                <p class="text-[#A3A3A1] text-sm">Filament Inventory Monitor</p>
             </div>
         </div>
         <nav class="flex gap-2">
-            <a href="/" class="nav-link {% if request.path == '/' %}bg-[#09395F]{% endif %}">Dashboard</a>
-            <a href="/settings_page" class="nav-link {% if request.path == '/settings_page' %}bg-[#09395F]{% endif %}">Settings</a>
+            <a href="/" class="nav-link {% if request.path == '/' %}nav-active{% endif %}">Dashboard</a>
+            <a href="/settings_page" class="nav-link {% if request.path == '/settings_page' %}nav-active{% endif %}">Settings</a>
+            <a href="/logout" class="nav-link text-[#E72A2E]">Logout</a>
         </nav>
     </header>
-
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+    <main>{% block content %}{% endblock %}</main>
 </body>
 </html>

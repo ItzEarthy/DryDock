@@ -4,40 +4,33 @@
         <div class="space-y-6 mt-4">
             <div class="p-4 rounded border flex justify-between items-center {% if desiccant_healthy %}border-[#35AB57] bg-[#35AB57]/10{% else %}border-[#E72A2E] bg-[#E72A2E]/10{% endif %}">
                 <div>
-                    <div class="text-[#A3A3A1] text-xs uppercase tracking-wider mb-1">Silica Gel Status</div>
-                    <div class="font-bold text-xl {% if desiccant_healthy %}text-[#35AB57]{% else %}text-[#E72A2E]{% endif %}">
-                        {% if desiccant_healthy %}Healthy{% else %}Saturated - Replace!{% endif %}
-                    </div>
+                    <div class="text-[#A3A3A1] text-xs uppercase mb-1">Silica Status</div>
+                    <div class="font-bold text-xl {% if desiccant_healthy %}text-[#35AB57]{% else %}text-[#E72A2E]{% endif %}">{% if desiccant_healthy %}Healthy{% else %}Saturated{% endif %}</div>
                 </div>
-                <div class="text-2xl font-mono text-white">{{ "%.1f"|format(hum_delta) }}% &Delta;</div>
+                <div class="text-2xl font-mono">{{ "%.1f"|format(hum_delta) }}% &Delta;</div>
             </div>
-            
             <div class="grid grid-cols-2 gap-4">
                 <div class="p-4 border border-[#A3A3A1]/50 rounded bg-black">
-                    <div class="text-xs text-[#A3A3A1] mb-2 uppercase">Internal (Drybox)</div>
-                    <div class="text-2xl font-mono text-white">{{ "%.1f"|format(log.hum_1) }}%</div>
+                    <div class="text-xs text-[#A3A3A1] mb-2 uppercase">Internal</div>
+                    <div class="text-2xl font-mono">{{ "%.1f"|format(log.hum_1) }}%</div>
                     <div class="text-sm text-[#A3A3A1] mt-1">{{ "%.1f"|format(log.temp_1) }}°C</div>
                 </div>
                 <div class="p-4 border border-[#A3A3A1]/50 rounded bg-black">
-                    <div class="text-xs text-[#A3A3A1] mb-2 uppercase">External (Ambient)</div>
-                    <div class="text-2xl font-mono text-white">{{ "%.1f"|format(log.hum_2) }}%</div>
+                    <div class="text-xs text-[#A3A3A1] mb-2 uppercase">External</div>
+                    <div class="text-2xl font-mono">{{ "%.1f"|format(log.hum_2) }}%</div>
                     <div class="text-sm text-[#A3A3A1] mt-1">{{ "%.1f"|format(log.temp_2) }}°C</div>
                 </div>
             </div>
-
             <div class="p-6 border border-[#09395F] rounded text-center bg-[#09395F]/10">
-                <div class="text-sm text-[#A3A3A1] uppercase tracking-wider mb-2">Active Spool Weight</div>
-                <div class="text-6xl font-bold text-white">{{ "%.0f"|format(weight_grams) if weight_grams != None else "0" }}<span class="text-2xl text-[#A3A3A1]">g</span></div>
+                <div class="text-sm text-[#A3A3A1] uppercase mb-2">Live Weight</div>
+                <div class="text-6xl font-bold">{{ "%.0f"|format(weight_grams) if weight_grams != None else "0" }}<span class="text-2xl text-[#A3A3A1]">g</span></div>
             </div>
-            
             <div class="p-4 border border-[#A3A3A1]/50 rounded flex justify-between items-center bg-black">
                 <div class="text-xs text-[#A3A3A1] uppercase">Scanned RFID</div>
-                <div class="text-lg font-mono text-white tracking-widest">{{ latest_uid or "Awaiting Scan..." }}</div>
+                <div class="text-lg font-mono">{{ latest_uid or "Awaiting Scan..." }}</div>
             </div>
         </div>
     {% else %}
-        <div class="p-8 text-center text-[#A3A3A1] border border-[#A3A3A1]/30 rounded border-dashed">
-            Awaiting connection from ESP32...
-        </div>
+        <div class="p-8 text-center text-[#A3A3A1] border border-[#A3A3A1]/30 rounded border-dashed">Awaiting ESP32 Connection...</div>
     {% endif %}
 </div>

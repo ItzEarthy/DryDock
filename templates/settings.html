@@ -1,28 +1,38 @@
-<div class="card h-fit">
-    <h2 class="text-2xl font-bold mb-4 text-[#09395F] border-b border-[#A3A3A1]/30 pb-2">Firmware Builder</h2>
-    <p class="text-xs text-[#A3A3A1] mb-4">Generate an Arduino script pre-configured with your network details.</p>
-    
-    <form action="/build_firmware" method="POST" class="space-y-4">
-        <div>
-            <label class="block text-xs text-[#A3A3A1] mb-1">Wi-Fi SSID</label>
-            <input type="text" name="ssid" class="input-dark" required>
+{% extends "base.html" %}
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="space-y-6">
+        <div class="card">
+            <h2 class="text-2xl font-bold mb-4 text-[#09395F] border-b border-[#A3A3A1]/30 pb-2">Configuration</h2>
+            <form hx-post="/settings" hx-target="#settings-result" class="space-y-4">
+                <div><label class="block text-xs text-[#A3A3A1]">Spoolman URL</label><input type="url" name="spoolman_url" value="{{ app_settings.spoolman_url }}" class="input-dark"></div>
+                <div><label class="block text-xs text-[#A3A3A1]">Desiccant Delta (%)</label><input type="number" step="0.1" name="humidity_threshold" value="{{ app_settings.humidity_threshold }}" class="input-dark"></div>
+                <div><label class="block text-xs text-[#A3A3A1]">Log Retention (Days)</label><input type="number" name="log_retention_days" value="{{ app_settings.log_retention_days }}" class="input-dark"></div>
+                <div><label class="block text-xs text-[#A3A3A1]">Discord/Slack Webhook URL (Alerts)</label><input type="url" name="webhook_url" value="{{ app_settings.webhook_url }}" class="input-dark"></div>
+                <button type="submit" class="btn-gray w-full uppercase">Save Configuration</button>
+            </form>
+            <div id="settings-result"></div>
         </div>
-        <div>
-            <label class="block text-xs text-[#A3A3A1] mb-1">Wi-Fi Password</label>
-            <input type="password" name="password" class="input-dark" required>
+        <div class="card">
+            <h2 class="text-xl font-bold mb-4 text-[#09395F] border-b border-[#A3A3A1]/30 pb-2">Data & Logs</h2>
+            <p class="text-xs text-[#A3A3A1] mb-4">Export raw sensor data to CSV.</p>
+            <a href="/api/logs/download" class="btn-blue block text-center uppercase text-sm">Download Sensor Dump</a>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-xs text-[#A3A3A1] mb-1">Pi IP Address</label>
-                <input type="text" name="pi_ip" value="192.168.0.169" class="input-dark" required>
-            </div>
-            <div>
-                <label class="block text-xs text-[#A3A3A1] mb-1">Port</label>
-                <input type="text" name="pi_port" value="2134" class="input-dark" required>
-            </div>
+    </div>
+    <div class="space-y-6">
+        <div id="calibration-card" class="card">{% include 'partials/calibration.html' %}</div>
+        <div class="card">
+            <h2 class="text-xl font-bold mb-4 text-[#09395F] border-b border-[#A3A3A1]/30 pb-2">Firmware Builder</h2>
+            <form action="/build_firmware" method="POST" class="space-y-4">
+                <div><label class="block text-xs text-[#A3A3A1]">SSID</label><input type="text" name="ssid" class="input-dark" required></div>
+                <div><label class="block text-xs text-[#A3A3A1]">Password</label><input type="password" name="password" class="input-dark" required></div>
+                <div class="flex gap-2">
+                    <div class="flex-1"><label class="block text-xs text-[#A3A3A1]">Pi IP</label><input type="text" name="pi_ip" value="192.168.0.169" class="input-dark"></div>
+                    <div class="flex-1"><label class="block text-xs text-[#A3A3A1]">Port</label><input type="text" name="pi_port" value="5000" class="input-dark"></div>
+                </div>
+                <button type="submit" class="btn-blue w-full uppercase">Download Script</button>
+            </form>
         </div>
-        <button type="submit" class="btn-blue w-full uppercase tracking-wider flex justify-center items-center gap-2">
-            Download Script
-        </button>
-    </form>
+    </div>
 </div>
+{% endblock %}

@@ -18,7 +18,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 echo "Installing Python packages..."
-pip install Flask Flask-SQLAlchemy Werkzeug APScheduler Flask-Migrate
+pip install Flask Flask-SQLAlchemy Werkzeug APScheduler Flask-Migrate requests
 
 echo "Initializing the database..."
 export FLASK_APP=app.py
