@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2" hx-get="/partials/latest" hx-trigger="every 2s" hx-swap="innerHTML">
+        {% include 'partials/latest.html' %} 
+    </div>
+
+    <div class="space-y-6">
+        <div id="spoolman-card" class="card">
+            <h2 class="text-xl font-bold mb-4 text-[#09395F]">Spoolman Sync</h2>
+            <form hx-post="/spoolman/sync" hx-target="#sync-result" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-[#A3A3A1] mb-1">Spoolman Spool ID</label>
+                    <input type="number" name="spoolman_id" class="input-dark" required placeholder="e.g. 12">
+                </div>
+                <div>
+                    <label class="block text-xs text-[#A3A3A1] mb-1">RFID UID (Auto-filled)</label>
+                    <input type="text" name="rfid_uid" value="{{ latest_uid }}" class="input-dark text-[#A3A3A1]" readonly>
+                </div>
+                <button type="submit" class="btn-blue w-full uppercase tracking-wider">Sync Spool</button>
+            </form>
+            <div id="sync-result"></div>
+        </div>
+        
+        <div class="card space-y-3">
+            <h2 class="text-xl font-bold mb-2 text-[#09395F]">System Health</h2>
+            <div class="flex justify-between items-center text-sm border-b border-[#A3A3A1]/30 pb-2">
+                <span class="text-[#A3A3A1]">DryDock ESP32</span>
+                <span class="font-bold flex items-center gap-2 text-{% if sensor_status.ok %}white{% else %}[#E72A2E]{% endif %}">
+                    <span class="status-dot {% if sensor_status.ok %}status-good{% else %}status-bad{% endif %}"></span>
+                    {{ sensor_status.msg }}
+                </span>
+            </div>
+            <div class="flex justify-between items-center text-sm pb-2">
+                <span class="text-[#A3A3A1]">Spoolman API</span>
+                <span class="font-bold flex items-center gap-2 text-{% if spoolman_status.ok %}white{% else %}[#E72A2E]{% endif %}">
+                    <span class="status-dot {% if spoolman_status.ok %}status-good{% else %}status-bad{% endif %}"></span>
+                    {{ spoolman_status.msg }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
