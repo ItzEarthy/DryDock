@@ -1,16 +1,27 @@
 import json
 import os
-import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
+from io import BytesIO
+from flask_migrate import Migrate
 
-from flask import Flask, jsonify, render_template, request, redirect, url_for
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, send_file
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///drydock.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.secret_key = "change_this_to_a_secure_random_string_in_production"
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# --- MODELS ---
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
 
 class SensorLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -22,187 +33,131 @@ class SensorLog(db.Model):
     raw_adc = db.Column(db.Float, nullable=True)
     rfid_uid = db.Column(db.String(64), nullable=True)
 
-class CalibrationSettings(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    tare_offset = db.Column(db.Float, nullable=False, default=0.0)
-    calibration_multiplier = db.Column(db.Float, nullable=False, default=1.0)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
 class AppSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    spoolman_url = db.Column(db.String(255), nullable=True, default="http://localhost:8000")
-    humidity_threshold = db.Column(db.Float, nullable=False, default=10.0)
+    spoolman_url = db.Column(db.String(255), default="http://localhost:8000")
+    humidity_threshold = db.Column(db.Float, default=10.0)
+    log_retention_days = db.Column(db.Integer, default=7)
 
-class SpoolmanSyncLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    rfid_uid = db.Column(db.String(64), nullable=False)
-    spoolman_id = db.Column(db.Integer, nullable=False)
-    success = db.Column(db.Boolean, nullable=False)
-    message = db.Column(db.String(500), nullable=True)
+# --- AUTHENTICATION MIDDLEWARE ---
+@app.before_request
+def check_setup():
+    # Allow setup route, static files, and the API endpoint to bypass auth
+    if request.path.startswith('/api/update') or request.path.startswith('/static'):
+        return
+        
+    if not User.query.first():
+        if request.path != '/setup':
+            return redirect(url_for('setup'))
 
-def _to_float(value):
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+@app.route("/setup", methods=["GET", "POST"])
+def setup():
+    if User.query.first():
+        return redirect(url_for('index'))
+        
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if username and password:
+            hashed = generate_password_hash(password)
+            db.session.add(User(username=username, password_hash=hashed))
+            db.session.commit()
+            session['user_id'] = User.query.first().id
+            return redirect(url_for('index'))
+            
+    return render_template("setup.html")
 
-def get_calibration_settings():
-    settings = CalibrationSettings.query.first()
-    if settings is None:
-        settings = CalibrationSettings()
-        db.session.add(settings)
-        db.session.commit()
-    return settings
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        user = User.query.filter_by(username=request.form.get("username")).first()
+        if user and check_password_hash(user.password_hash, request.form.get("password")):
+            session['user_id'] = user.id
+            return redirect(url_for('index'))
+        return "Invalid credentials", 401
+    return render_template("login.html")
 
-def get_app_settings():
-    settings = AppSettings.query.first()
-    if settings is None:
-        settings = AppSettings()
-        db.session.add(settings)
-        db.session.commit()
-    return settings
+# --- BACKGROUND TASK (DATA PRUNING) ---
+def prune_old_logs():
+    with app.app_context():
+        settings = AppSettings.query.first()
+        if settings and settings.log_retention_days > 0:
+            cutoff_date = datetime.utcnow() - timedelta(days=settings.log_retention_days)
+            deleted = SensorLog.query.filter(SensorLog.timestamp < cutoff_date).delete()
+            db.session.commit()
+            print(f"Pruned {deleted} old sensor logs.")
 
-def latest_log():
-    return SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=prune_old_logs, trigger="interval", hours=24)
+scheduler.start()
 
-def latest_scanned_uid():
-    log = SensorLog.query.filter(SensorLog.rfid_uid.isnot(None), SensorLog.rfid_uid != "").order_by(SensorLog.timestamp.desc()).first()
-    return log.rfid_uid if log else ""
+# --- SCRIPT BUILDER ENDPOINT ---
+@app.route("/build_firmware", methods=["POST"])
+def build_firmware():
+    if 'user_id' not in session: return "Unauthorized", 401
+    
+    ssid = request.form.get("ssid", "")
+    wifi_pass = request.form.get("password", "")
+    ip_addr = request.form.get("pi_ip", "192.168.1.100")
+    port = request.form.get("pi_port", "5000")
+    
+    # Load your base C++ template (you can store this in a text file or as a string)
+    template_str = """
+#include <WiFi.h>
+#include <HTTPClient.h>
+// ... (rest of your includes) ...
 
-def check_spoolman(url):
-    if not url: return False, "Not Configured"
-    try:
-        req = urllib.request.Request(f"{url.rstrip('/')}/api/v1/info", method="GET")
-        with urllib.request.urlopen(req, timeout=2) as response:
-            if response.getcode() == 200: return True, "Connected"
-    except Exception: pass
-    return False, "Unreachable"
+const char* ssid = "{SSID}";
+const char* password = "{PASS}";
+const char* flask_server_url = "http://{IP}:{PORT}/api/update";
 
-def build_dashboard_context():
-    log = latest_log()
-    cal_settings = get_calibration_settings()
-    app_settings = get_app_settings()
+// ... (rest of your Arduino code) ...
+"""
+    
+    custom_script = template_str.replace("{SSID}", ssid).replace("{PASS}", wifi_pass).replace("{IP}", ip_addr).replace("{PORT}", port)
+    
+    buffer = BytesIO()
+    buffer.write(custom_script.encode('utf-8'))
+    buffer.seek(0)
+    
+    return send_file(buffer, as_attachment=True, download_name="DryDock_Node.ino", mimetype="text/plain")
 
-    hum_delta = weight_grams = desiccant_healthy = None
-    sensor_status = {"ok": False, "msg": "No Data"}
-
-    if log:
-        if (datetime.utcnow() - log.timestamp).total_seconds() < 300:
-            sensor_status = {"ok": True, "msg": "Online"}
-        else:
-            sensor_status = {"ok": False, "msg": "Offline (Stale Data)"}
-
-        if log.hum_1 is not None and log.hum_2 is not None:
-            hum_delta = log.hum_2 - log.hum_1
-            desiccant_healthy = hum_delta >= app_settings.humidity_threshold
-        if log.raw_adc is not None:
-            weight_grams = (log.raw_adc - cal_settings.tare_offset) * cal_settings.calibration_multiplier
-
-    spoolman_ok, spoolman_msg = check_spoolman(app_settings.spoolman_url)
-
-    return {
-        "log": log,
-        "cal_settings": cal_settings,
-        "app_settings": app_settings,
-        "hum_delta": hum_delta,
-        "desiccant_healthy": desiccant_healthy,
-        "weight_grams": weight_grams,
-        "latest_uid": latest_scanned_uid(),
-        "sensor_status": sensor_status,
-        "spoolman_status": {"ok": spoolman_ok, "msg": spoolman_msg}
+# --- GRAPH DATA API ---
+@app.route("/api/history")
+def get_history():
+    hours = int(request.args.get("hours", 24))
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+    logs = SensorLog.query.filter(SensorLog.timestamp >= cutoff).order_by(SensorLog.timestamp.asc()).all()
+    
+    data = {
+        "labels": [log.timestamp.strftime("%H:%M") for log in logs],
+        "hum_1": [log.hum_1 for log in logs],
+        "hum_2": [log.hum_2 for log in logs],
+        "temp_1": [log.temp_1 for log in logs]
     }
+    return jsonify(data)
 
-def sync_uid_to_spoolman(spoolman_id, rfid_uid):
-    base_url = get_app_settings().spoolman_url.rstrip("/")
-    if not base_url: return False, "SPOOLMAN_URL is not configured."
-    endpoint = f"{base_url}/api/v1/spool/{spoolman_id}"
-    payload = {"id": int(spoolman_id), "extra": {"rfid_uid": rfid_uid, "source": "DryDock"}}
-    body = json.dumps(payload).encode("utf-8")
-
-    for method in ("PATCH", "PUT"):
-        req = urllib.request.Request(endpoint, data=body, headers={"Content-Type": "application/json"}, method=method)
-        try:
-            with urllib.request.urlopen(req, timeout=5) as response:
-                if 200 <= response.getcode() < 300: return True, f"Synced UID to Spool {spoolman_id}."
-        except urllib.error.HTTPError as e:
-            if e.code == 405: continue
-            return False, f"HTTP Error {e.code}"
-        except Exception as e:
-            return False, "Connection Error"
-    return False, "Unsupported method."
-
-@app.route("/")
-def index():
-    return render_template("index.html", **build_dashboard_context())
-
-@app.route("/settings_page")
-def settings_page():
-    return render_template("settings.html", **build_dashboard_context())
-
-@app.route("/partials/<section>")
-def render_partial(section):
-    return render_template(f"partials/{section}.html", **build_dashboard_context())
-
-@app.route("/api/update", methods=["POST"])
-def update_data():
-    data = request.get_json(silent=True)
-    if not data: return jsonify({"error": "No data"}), 400
-    new_log = SensorLog(
-        temp_1=_to_float(data.get("temp_1")), hum_1=_to_float(data.get("hum_1")),
-        temp_2=_to_float(data.get("temp_2")), hum_2=_to_float(data.get("hum_2")),
-        raw_adc=_to_float(data.get("raw_adc")),
-        rfid_uid=(str(data.get("rfid_uid")).strip() if data.get("rfid_uid") else None)
-    )
-    db.session.add(new_log)
-    db.session.commit()
-    return jsonify({"status": "success"}), 201
-
-@app.post("/settings")
-def save_settings():
-    app_settings = get_app_settings()
-    app_settings.spoolman_url = request.form.get("spoolman_url", "").strip()
-    threshold = _to_float(request.form.get("humidity_threshold"))
-    if threshold is not None: app_settings.humidity_threshold = threshold
-    db.session.commit()
-    return "<div class='p-3 bg-[#35AB57]/20 border border-[#35AB57] text-[#35AB57] rounded mt-4'>Settings Saved Successfully</div>"
-
-@app.post("/calibration/tare")
-def auto_tare():
-    log = latest_log()
-    if not log or log.raw_adc is None: return "<div class='text-[#E72A2E] text-sm mt-2'>No data</div>", 400
-    settings = get_calibration_settings()
-    settings.tare_offset = log.raw_adc
-    db.session.commit()
-    return render_template("partials/calibration.html", **build_dashboard_context())
-
-@app.post("/calibration/multiplier")
-def auto_calibrate():
-    known = _to_float(request.form.get("known_weight"))
-    log = latest_log()
-    if not known or not log or log.raw_adc is None: return "<div class='text-[#E72A2E] text-sm mt-2'>Invalid Input</div>", 400
-    settings = get_calibration_settings()
-    adc_diff = log.raw_adc - settings.tare_offset
-    if adc_diff == 0: return "<div class='text-[#E72A2E] text-sm mt-2'>Scale unchanged</div>", 400
-    settings.calibration_multiplier = known / adc_diff
-    db.session.commit()
-    return render_template("partials/calibration.html", **build_dashboard_context())
-
-@app.post("/spoolman/sync")
-def spoolman_sync():
-    s_id = request.form.get("spoolman_id", "").strip()
-    uid = request.form.get("rfid_uid", "").strip() or latest_scanned_uid()
-    if not s_id.isdigit() or not uid: return "<div class='text-[#E72A2E] text-sm mt-2'>Invalid ID or missing UID.</div>", 400
-    success, msg = sync_uid_to_spoolman(int(s_id), uid)
-    db.session.add(SpoolmanSyncLog(rfid_uid=uid, spoolman_id=int(s_id), success=success, message=msg))
-    db.session.commit()
-    color = "#35AB57" if success else "#E72A2E"
-    return f"<div class='p-3 border rounded text-sm mt-3' style='border-color:{color}; color:{color}; bg-color:{color}20;'>{msg}</div>"
-
-with app.app_context():
-    db.create_all()
+# --- SPOOLMAN PROXY (For fetching Materials/Vendors) ---
+@app.route("/api/spoolman/options")
+def spoolman_options():
+    settings = AppSettings.query.first()
+    if not settings or not settings.spoolman_url:
+        return jsonify({"error": "Spoolman URL not set"}), 400
+        
+    try:
+        # Fetch vendors
+        req_v = urllib.request.Request(f"{settings.spoolman_url.rstrip('/')}/api/v1/vendor", method="GET")
+        with urllib.request.urlopen(req_v, timeout=2) as res:
+            vendors = json.loads(res.read().decode('utf-8'))
+            
+        # Fetch filaments/materials
+        req_f = urllib.request.Request(f"{settings.spoolman_url.rstrip('/')}/api/v1/filament", method="GET")
+        with urllib.request.urlopen(req_f, timeout=2) as res:
+            filaments = json.loads(res.read().decode('utf-8'))
+            
+        return jsonify({"vendors": vendors, "filaments": filaments})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

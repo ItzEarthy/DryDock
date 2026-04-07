@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DryDock - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000000; color: #FFFFFF; font-family: sans-serif; }
+        .input-dark { background: #000000; border: 1px solid #A3A3A1; color: #FFFFFF; padding: 0.5rem; border-radius: 0.375rem; width: 100%; outline: none; }
+        .input-dark:focus { border-color: #09395F; }
+        .btn-blue { background: #09395F; color: #FFFFFF; padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-blue:hover { opacity: 0.8; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="border border-[#A3A3A1] p-8 rounded-lg max-w-md w-full bg-[#050505]">
+        <h1 class="text-2xl font-bold mb-6 text-[#09395F] text-center uppercase tracking-widest">DryDock</h1>
+        
+        <form action="/login" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs text-[#A3A3A1] mb-1">Username</label>
+                <input type="text" name="username" class="input-dark" required autocomplete="username">
+            </div>
+            <div>
+                <label class="block text-xs text-[#A3A3A1] mb-1">Password</label>
+                <input type="password" name="password" class="input-dark" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-blue mt-4 uppercase tracking-wider">Login</button>
+        </form>
+    </div>
+</body>
+</html>

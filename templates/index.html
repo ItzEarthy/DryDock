@@ -1,44 +1,60 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2" hx-get="/partials/latest" hx-trigger="every 2s" hx-swap="innerHTML">
-        {% include 'partials/latest.html' %} 
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <div class="space-y-6">
-        <div id="spoolman-card" class="card">
-            <h2 class="text-xl font-bold mb-4 text-[#09395F]">Spoolman Sync</h2>
-            <form hx-post="/spoolman/sync" hx-target="#sync-result" class="space-y-4">
-                <div>
-                    <label class="block text-xs text-[#A3A3A1] mb-1">Spoolman Spool ID</label>
-                    <input type="number" name="spoolman_id" class="input-dark" required placeholder="e.g. 12">
-                </div>
-                <div>
-                    <label class="block text-xs text-[#A3A3A1] mb-1">RFID UID (Auto-filled)</label>
-                    <input type="text" name="rfid_uid" value="{{ latest_uid }}" class="input-dark text-[#A3A3A1]" readonly>
-                </div>
-                <button type="submit" class="btn-blue w-full uppercase tracking-wider">Sync Spool</button>
-            </form>
-            <div id="sync-result"></div>
-        </div>
-        
-        <div class="card space-y-3">
-            <h2 class="text-xl font-bold mb-2 text-[#09395F]">System Health</h2>
-            <div class="flex justify-between items-center text-sm border-b border-[#A3A3A1]/30 pb-2">
-                <span class="text-[#A3A3A1]">DryDock ESP32</span>
-                <span class="font-bold flex items-center gap-2 text-{% if sensor_status.ok %}white{% else %}[#E72A2E]{% endif %}">
-                    <span class="status-dot {% if sensor_status.ok %}status-good{% else %}status-bad{% endif %}"></span>
-                    {{ sensor_status.msg }}
-                </span>
-            </div>
-            <div class="flex justify-between items-center text-sm pb-2">
-                <span class="text-[#A3A3A1]">Spoolman API</span>
-                <span class="font-bold flex items-center gap-2 text-{% if spoolman_status.ok %}white{% else %}[#E72A2E]{% endif %}">
-                    <span class="status-dot {% if spoolman_status.ok %}status-good{% else %}status-bad{% endif %}"></span>
-                    {{ spoolman_status.msg }}
-                </span>
-            </div>
-        </div>
+<div class="card bg-black p-4 border border-[#A3A3A1]/50 rounded">
+    <h2 class="text-xl font-bold mb-4 text-[#09395F]">Environmental History</h2>
+    <div class="flex gap-2 mb-4">
+        <button onclick="loadGraph(1)" class="text-xs bg-[#A3A3A1] text-black px-2 py-1 rounded">1 Hour</button>
+        <button onclick="loadGraph(24)" class="text-xs bg-[#A3A3A1] text-black px-2 py-1 rounded">24 Hours</button>
+        <button onclick="loadGraph(168)" class="text-xs bg-[#A3A3A1] text-black px-2 py-1 rounded">7 Days</button>
     </div>
+    <canvas id="envChart" height="100"></canvas>
 </div>
-{% endblock %}
+
+<script>
+let envChart;
+
+async function loadGraph(hours) {
+    const response = await fetch(`/api/history?hours=${hours}`);
+    const data = await response.json();
+
+    const ctx = document.getElementById('envChart').getContext('2d');
+    
+    if (envChart) {
+        envChart.destroy();
+    }
+
+    envChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Internal Humidity (%)',
+                    data: data.hum_1,
+                    borderColor: '#35AB57',
+                    tension: 0.1,
+                    pointRadius: 0
+                },
+                {
+                    label: 'External Humidity (%)',
+                    data: data.hum_2,
+                    borderColor: '#E72A2E',
+                    tension: 0.1,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: false, grid: { color: '#333' } },
+                x: { grid: { color: '#333' } }
+            },
+            plugins: { legend: { labels: { color: '#FFF' } } }
+        }
+    });
+}
+
+// Load default 24h graph on boot
+document.addEventListener("DOMContentLoaded", () => loadGraph(24));
+</script>
