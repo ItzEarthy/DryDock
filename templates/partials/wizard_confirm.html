@@ -1,0 +1,37 @@
+<div class="space-y-4">
+    <div class="p-3 border rounded" style="border-color: var(--edge);">
+        <div class="font-semibold mb-1">Step 4: Confirm + Sync</div>
+        <p class="text-sm soft-text">Review and sync to Spoolman. You can re-weigh or cancel if needed.</p>
+    </div>
+
+    <form hx-post="/wizard/step/accept" hx-target="#wizard-result" hx-swap="innerHTML" class="space-y-3">
+        <div>
+            <label class="block text-xs soft-text mb-1">Spool to Update</label>
+            <select name="spoolman_id" class="input-dark" required>
+                <option value="">Select spool</option>
+                {% for spool in spoolman_spools %}
+                    {% set spool_id = spool.id if spool.id is defined else (spool.spool_id if spool.spool_id is defined else '') %}
+                    {% set filament = spool.filament if spool.filament is defined else None %}
+                    {% set label = filament.name if filament and filament.name is defined else (spool.name if spool.name is defined else ('Spool #' ~ spool_id)) %}
+                    <option value="{{ spool_id }}">{{ label }} (ID {{ spool_id }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs soft-text mb-1">RFID UID</label>
+                <input name="rfid_uid" class="input-dark mono" value="{{ latest_uid }}" required>
+            </div>
+            <div>
+                <label class="block text-xs soft-text mb-1">Stable Weight (g)</label>
+                <input name="weight" class="input-dark mono" value="{{ "%.2f"|format(selected_weight if selected_weight is not none else 0) }}" required>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+            <button type="submit" class="btn-blue uppercase text-sm">Accept</button>
+            <button type="button" class="btn-outline uppercase text-sm" hx-get="/wizard/step/harden" hx-target="#wizard-body" hx-swap="innerHTML">Re-weigh</button>
+            <button type="button" class="btn-outline uppercase text-sm" onclick="closeModal()">Cancel</button>
+        </div>
+    </form>
+</div>

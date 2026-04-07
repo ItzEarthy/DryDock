@@ -1,66 +1,361 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 space-y-6">
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="xl:col-span-2 space-y-6">
         <div hx-get="/partials/latest" hx-trigger="every 2s" hx-swap="innerHTML">
-            {% include 'partials/latest.html' %} 
+            {% include 'partials/latest.html' %}
         </div>
+
         <div class="card">
-            <h2 class="text-xl font-bold mb-4 text-[#09395F] border-b border-[#A3A3A1]/30 pb-2">Environmental History</h2>
-            <div class="flex gap-2 mb-4">
-                <button onclick="loadGraph(1)" class="text-xs bg-[#A3A3A1] text-black px-3 py-1 rounded font-bold">1 Hour</button>
-                <button onclick="loadGraph(24)" class="text-xs bg-[#A3A3A1] text-black px-3 py-1 rounded font-bold">24 Hours</button>
-                <button onclick="loadGraph(168)" class="text-xs bg-[#A3A3A1] text-black px-3 py-1 rounded font-bold">7 Days</button>
+            <h2 class="text-xl font-bold mb-4 section-title">Environmental History</h2>
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button class="btn-outline text-xs range-btn" data-range="1h">1 Hour</button>
+                <button class="btn-outline text-xs range-btn" data-range="24h">24 Hours</button>
+                <button class="btn-outline text-xs range-btn" data-range="7d">7 Days</button>
+
+                <select id="aggSelect" class="input-dark max-w-[160px] text-xs">
+                    <option value="raw">Raw</option>
+                    <option value="avg" selected>Average</option>
+                    <option value="min">Minimum</option>
+                    <option value="max">Maximum</option>
+                </select>
+
+                <button id="zoomReset" class="btn-outline text-xs">Reset Zoom</button>
             </div>
-            <canvas id="envChart" height="100"></canvas>
+
+            <div class="text-xs soft-text mb-3">
+                Breaches where humidity delta is below threshold are highlighted as red markers.
+            </div>
+            <canvas id="envChart" height="96"></canvas>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="card space-y-4">
+                <h2 class="text-lg font-bold section-title">Scale Controls</h2>
+
+                <div>
+                    <div class="text-xs soft-text uppercase mb-1">Display Unit</div>
+                    <button id="unit-toggle" class="btn-outline text-sm">Show in kg</button>
+                </div>
+
+                <div>
+                    <div class="text-xs soft-text uppercase mb-1">Current Weight</div>
+                    <div id="scale-value" class="text-4xl mono font-bold">{{ "%.2f"|format(weight_grams if weight_grams is not none else 0) }} g</div>
+                    <div class="text-xs soft-text mt-1">Stable: <span id="stable-weight" class="mono">{{ "%.2f"|format(stability.stable_weight if stability.stable_weight is not none else 0) }}</span> g</div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="soft-text uppercase">Weight Hardening</span>
+                        <span id="hardening-label" class="mono">{{ stability.progress }}%</span>
+                    </div>
+                    <div class="w-full h-3 rounded bg-black/20 overflow-hidden">
+                        <div id="hardening-bar" class="h-full" style="width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2));"></div>
+                    </div>
+                </div>
+
+                <button hx-post="/api/scale/remote_tare" hx-target="#tare-result" class="btn-gray w-full uppercase">Tare</button>
+                <div id="tare-result"></div>
+            </div>
+
+            <div class="card space-y-4">
+                <h2 class="text-lg font-bold section-title">Filament Update Wizard</h2>
+                <p class="text-sm soft-text">Runs: Clear/Scan -> Add Spool -> Harden -> Confirm with Accept / Re-weigh / Cancel.</p>
+                <button class="btn-blue w-full uppercase" hx-get="/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Launch Wizard</button>
+
+                <div class="text-xs soft-text pt-2 border-t" style="border-color: var(--edge);">
+                    Use the quick sync card for direct ID updates, or the wizard for guided flow.
+                </div>
+            </div>
         </div>
     </div>
+
     <div class="space-y-6">
         <div class="card">
-            <h2 class="text-xl font-bold mb-4 text-[#09395F] border-b border-[#A3A3A1]/30 pb-2">Spoolman Workflow</h2>
+            <h2 class="text-xl font-bold mb-4 section-title">Quick Sync to Spoolman</h2>
             <form hx-post="/spoolman/sync" hx-target="#sync-result" class="space-y-4">
                 <div>
-                    <label class="block text-xs text-[#A3A3A1] mb-1">Spoolman ID</label>
+                    <label class="block text-xs soft-text mb-1">Spoolman ID</label>
                     <input type="number" name="spoolman_id" class="input-dark" required>
                 </div>
                 <div>
-                    <label class="block text-xs text-[#A3A3A1] mb-1">RFID UID</label>
-                    <input type="text" name="rfid_uid" value="{{ latest_uid }}" class="input-dark" readonly>
+                    <label class="block text-xs soft-text mb-1">RFID UID</label>
+                    <input type="text" name="rfid_uid" value="{{ latest_uid }}" class="input-dark mono" required>
                 </div>
                 <div>
-                    <label class="block text-xs text-[#A3A3A1] mb-1">Current Weight (g)</label>
-                    <input type="number" name="weight" value="{{ '%.0f'|format(weight_grams) if weight_grams != None else '0' }}" class="input-dark" readonly>
+                    <label class="block text-xs soft-text mb-1">Current Weight (g)</label>
+                    <input type="number" step="any" name="weight" value="{{ '%.2f'|format(stability.stable_weight if stability.stable_weight is not none else (weight_grams if weight_grams is not none else 0)) }}" class="input-dark" required>
                 </div>
                 <button type="submit" class="btn-blue w-full uppercase">Update Spool</button>
             </form>
             <div id="sync-result" class="mt-2"></div>
         </div>
+
+        <div class="card">
+            <h2 class="text-xl font-bold mb-4 section-title">Active Filaments</h2>
+            <div id="spool-list-wrapper" hx-get="/partials/spool_list" hx-trigger="load, every 20s" hx-swap="innerHTML">
+                {% include 'partials/spool_list.html' %}
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="text-xl font-bold mb-4 section-title">Add Filament by RFID</h2>
+            <form hx-post="/spoolman/add_filament" hx-target="#add-filament-result" class="space-y-3">
+                <div>
+                    <label class="block text-xs soft-text mb-1">Material / Vendor</label>
+                    <select name="filament_id" class="input-dark" required>
+                        <option value="">Select filament</option>
+                        {% for filament in filament_options %}
+                            {% set vendor_name = filament.vendor.name if filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament.vendor is defined else 'Unknown Vendor') %}
+                            {% set material_name = filament.material if filament.material is defined else (filament.material_name if filament.material_name is defined else 'Unknown Material') %}
+                            {% set filament_name = filament.name if filament.name is defined else ('Filament ' ~ filament.id) %}
+                            <option value="{{ filament.id }}">{{ filament_name }} - {{ material_name }} / {{ vendor_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs soft-text mb-1">RFID UID</label>
+                    <input name="rfid_uid" value="{{ latest_uid }}" class="input-dark mono" required>
+                </div>
+                <div>
+                    <label class="block text-xs soft-text mb-1">Remaining Weight (g)</label>
+                    <input type="number" step="any" name="remaining_weight" value="{{ '%.2f'|format(stability.stable_weight if stability.stable_weight is not none else (weight_grams if weight_grams is not none else 0)) }}" class="input-dark" required>
+                </div>
+                <button class="btn-outline w-full uppercase">Create + Link RFID</button>
+            </form>
+            <div id="add-filament-result" class="mt-2"></div>
+        </div>
+
         <div class="card space-y-3">
-            <h2 class="text-xl font-bold mb-2 text-[#09395F] border-b border-[#A3A3A1]/30 pb-2">System Health</h2>
+            <h2 class="text-xl font-bold mb-2 section-title">System Health</h2>
             <div class="flex justify-between text-sm pb-2 mt-3">
-                <span class="text-[#A3A3A1]">DryDock ESP32</span>
-                <span class="font-bold flex items-center gap-2"><span class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ sensor_status.msg }}</span>
+                <span class="soft-text">DryDock ESP32</span>
+                <span id="health-esp32" class="font-bold flex items-center gap-2"><span class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ sensor_status.msg }}</span>
             </div>
             <div class="flex justify-between text-sm pb-2">
-                <span class="text-[#A3A3A1]">Spoolman API</span>
-                <span class="font-bold flex items-center gap-2"><span class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ spoolman_status.msg }}</span>
+                <span class="soft-text">Spoolman API</span>
+                <span id="health-spoolman" class="font-bold flex items-center gap-2"><span class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ spoolman_status.msg }}</span>
+            </div>
+            <div class="flex justify-between text-sm pb-2">
+                <span class="soft-text">Database</span>
+                <span id="health-db" class="font-bold flex items-center gap-2"><span class="dot {% if db_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ db_status.msg }}</span>
+            </div>
+            <div class="flex justify-between text-sm pt-2 border-t" style="border-color: var(--edge);">
+                <span class="soft-text">Uptime</span>
+                <span id="health-uptime" class="mono">{{ uptime }}</span>
             </div>
         </div>
     </div>
 </div>
+
+<div id="weight-seed" data-weight="{{ '%.6f'|format(weight_grams if weight_grams is not none else 0) }}" hidden></div>
+
 <script>
-let envChart;
-async function loadGraph(hrs) {
-    const res = await fetch(`/api/history?hours=${hrs}`);
-    const data = await res.json();
-    if(envChart) envChart.destroy();
-    envChart = new Chart(document.getElementById('envChart').getContext('2d'), {
-        type: 'line', data: { labels: data.labels, datasets: [
-            { label: 'Internal Hum %', data: data.hum_1, borderColor: '#35AB57', tension: 0.1, pointRadius: 0 },
-            { label: 'External Hum %', data: data.hum_2, borderColor: '#E72A2E', tension: 0.1, pointRadius: 0 }
-        ]}, options: { responsive: true, scales: { y: { grid: { color: '#333' } }, x: { grid: { color: '#333' } } } }
+let envChart = null;
+let chartRange = "24h";
+let chartAggregation = "avg";
+let useKilograms = false;
+let lastWeightGrams = Number(document.getElementById("weight-seed")?.dataset.weight || 0);
+
+if (window.Chart) {
+    const zoomPlugin = window.ChartZoom || window["chartjs-plugin-zoom"];
+    if (zoomPlugin) {
+        Chart.register(zoomPlugin);
+    }
+}
+
+function cssVar(name) {
+    return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+function setRangeButtons() {
+    document.querySelectorAll(".range-btn").forEach((btn) => {
+        const active = btn.dataset.range === chartRange;
+        btn.style.background = active ? "linear-gradient(120deg, var(--accent), var(--accent-2))" : "";
+        btn.style.color = active ? "#f5fff8" : "";
     });
 }
-document.addEventListener("DOMContentLoaded", () => loadGraph(24));
+
+function renderWeight(grams) {
+    const el = document.getElementById("scale-value");
+    if (!el) return;
+    if (useKilograms) {
+        el.textContent = `${(grams / 1000).toFixed(3)} kg`;
+    } else {
+        el.textContent = `${grams.toFixed(2)} g`;
+    }
+}
+
+async function refreshStability() {
+    try {
+        const res = await fetch("/api/weight/stability");
+        if (!res.ok) return;
+        const data = await res.json();
+        const stable = typeof data.stable_weight === "number" ? data.stable_weight : lastWeightGrams;
+        lastWeightGrams = stable;
+
+        renderWeight(stable);
+
+        const label = document.getElementById("hardening-label");
+        const bar = document.getElementById("hardening-bar");
+        const stableEl = document.getElementById("stable-weight");
+        if (label) label.textContent = `${data.progress || 0}%`;
+        if (bar) bar.style.width = `${data.progress || 0}%`;
+        if (stableEl) stableEl.textContent = Number(stable).toFixed(2);
+    } catch (_) {
+        // Keep UI responsive even if the endpoint briefly fails.
+    }
+}
+
+async function refreshHealth() {
+    try {
+        const res = await fetch("/api/system/health");
+        if (!res.ok) return;
+        const data = await res.json();
+        const espEl = document.getElementById("health-esp32");
+        const spoolEl = document.getElementById("health-spoolman");
+        const dbEl = document.getElementById("health-db");
+        const upEl = document.getElementById("health-uptime");
+
+        const paint = (el, payload) => {
+            if (!el) return;
+            const dotClass = payload.ok ? "dot-g" : "dot-r";
+            el.innerHTML = `<span class="dot ${dotClass}"></span>${payload.msg}`;
+        };
+
+        paint(espEl, data.esp32 || { ok: false, msg: "Unknown" });
+        paint(spoolEl, data.spoolman || { ok: false, msg: "Unknown" });
+        paint(dbEl, data.database || { ok: false, msg: "Unknown" });
+        if (upEl && data.uptime) upEl.textContent = data.uptime;
+    } catch (_) {
+        // Ignore transient health polling failures.
+    }
+}
+
+async function loadGraph() {
+    const url = `/api/history?range=${encodeURIComponent(chartRange)}&aggregation=${encodeURIComponent(chartAggregation)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const labels = (data.labels || []).map((iso) => {
+        const dt = new Date(iso);
+        return dt.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    });
+
+    const hum1 = data.hum_1 || [];
+    const hum2 = data.hum_2 || [];
+    const delta = hum2.map((v, i) => {
+        if (v === null || hum1[i] === null || v === undefined || hum1[i] === undefined) return null;
+        return Number(v) - Number(hum1[i]);
+    });
+    const threshold = labels.map(() => data.threshold || 10);
+
+    const palette = {
+        internal: cssVar("--ok") || "#3cb371",
+        external: cssVar("--danger") || "#db3a34",
+        delta: cssVar("--accent-2") || "#1b9aaa",
+        threshold: "#f4a259",
+        anomaly: cssVar("--danger") || "#db3a34",
+        grid: cssVar("--chart-grid") || "rgba(120,120,120,0.25)",
+        text: cssVar("--muted") || "#a9b8c7"
+    };
+
+    if (envChart) envChart.destroy();
+
+    envChart = new Chart(document.getElementById("envChart").getContext("2d"), {
+        type: "line",
+        data: {
+            labels,
+            datasets: [
+                { label: "Internal Hum %", data: hum1, borderColor: palette.internal, pointRadius: 0, tension: 0.18 },
+                { label: "External Hum %", data: hum2, borderColor: palette.external, pointRadius: 0, tension: 0.18 },
+                { label: "Humidity Delta %", data: delta, borderColor: palette.delta, borderDash: [7, 5], pointRadius: 0, tension: 0.15 },
+                { label: "Threshold %", data: threshold, borderColor: palette.threshold, borderDash: [3, 4], pointRadius: 0, tension: 0 },
+                {
+                    type: "scatter",
+                    label: "Threshold Breach",
+                    data: (data.anomalies || []).map((point) => {
+                        const dt = new Date(point.x);
+                        return {
+                            x: dt.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+                            y: point.y
+                        };
+                    }),
+                    pointRadius: 4,
+                    pointHoverRadius: 5,
+                    showLine: false,
+                    borderColor: palette.anomaly,
+                    backgroundColor: palette.anomaly,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: { mode: "index", intersect: false },
+            scales: {
+                y: { grid: { color: palette.grid }, ticks: { color: palette.text } },
+                x: { grid: { color: palette.grid }, ticks: { color: palette.text, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+            },
+            plugins: {
+                legend: { labels: { color: palette.text } },
+                zoom: {
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: "x"
+                    },
+                    pan: {
+                        enabled: true,
+                        mode: "x"
+                    }
+                }
+            }
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    setRangeButtons();
+    loadGraph();
+    renderWeight(lastWeightGrams || 0);
+    refreshStability();
+    refreshHealth();
+
+    setInterval(refreshStability, 2000);
+    setInterval(refreshHealth, 15000);
+
+    document.querySelectorAll(".range-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            chartRange = btn.dataset.range;
+            setRangeButtons();
+            loadGraph();
+        });
+    });
+
+    const aggSelect = document.getElementById("aggSelect");
+    if (aggSelect) {
+        aggSelect.addEventListener("change", () => {
+            chartAggregation = aggSelect.value;
+            loadGraph();
+        });
+    }
+
+    const zoomReset = document.getElementById("zoomReset");
+    if (zoomReset) {
+        zoomReset.addEventListener("click", () => {
+            if (envChart) envChart.resetZoom();
+        });
+    }
+
+    const unitToggle = document.getElementById("unit-toggle");
+    if (unitToggle) {
+        unitToggle.addEventListener("click", () => {
+            useKilograms = !useKilograms;
+            unitToggle.textContent = useKilograms ? "Show in g" : "Show in kg";
+            renderWeight(lastWeightGrams || 0);
+        });
+    }
+});
 </script>
 {% endblock %}
