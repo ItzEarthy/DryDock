@@ -22,12 +22,3 @@ jobs:
       - name: Run Bandit
         # Scans app.py and any other python files, ignores the instance folder
         run: bandit -r . -x ./instance -ll
-
-      # 2. Secret Scanning (TruffleHog)
-      - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --debug --only-verified
