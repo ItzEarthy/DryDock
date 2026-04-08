@@ -1213,6 +1213,28 @@ def wizard_modal():
 def wizard_step(step_name):
     context = build_context(include_spools=True)
 
+    # Auto-detect spool matching latest scanned RFID (if any)
+    selected_spool_id = None
+    latest_uid = (context.get("latest_uid") or "").strip()
+    if latest_uid:
+        for spool in context.get("spoolman_spools", []):
+            # spool is a dict parsed from Spoolman JSON; check 'extra' then top-level rfid fields
+            spool_extra = spool.get("extra") if isinstance(spool, dict) else getattr(spool, "extra", None)
+            spool_rfid = None
+            if isinstance(spool_extra, dict):
+                spool_rfid = (spool_extra.get("rfid_uid") or spool_extra.get("rfid") or "").strip()
+            if not spool_rfid:
+                spool_rfid = (spool.get("rfid_uid") if isinstance(spool, dict) else getattr(spool, "rfid_uid", None)) or ""
+                spool_rfid = spool_rfid.strip() if spool_rfid else ""
+            if spool_rfid and spool_rfid == latest_uid:
+                spool_id_val = (spool.get("id") if isinstance(spool, dict) else getattr(spool, "id", None)) or (spool.get("spool_id") if isinstance(spool, dict) else getattr(spool, "spool_id", None))
+                try:
+                    selected_spool_id = int(spool_id_val)
+                except Exception:
+                    selected_spool_id = spool_id_val
+                break
+    context["selected_spool_id"] = selected_spool_id
+
     if step_name == "clear_scan":
         if request.method == "POST":
             success, message = _perform_software_tare()
@@ -1227,15 +1249,36 @@ def wizard_step(step_name):
         return render_template("partials/wizard_add_spool.html", **context)
 
     if step_name == "harden":
-        context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        sw = request.args.get("selected_weight")
+        if sw:
+            try:
+                context["selected_weight"] = float(sw)
+            except Exception:
+                context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        else:
+            context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
         return render_template("partials/wizard_confirm.html", **context)
 
     if step_name == "harden_status":
-        context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        sw = request.args.get("selected_weight")
+        if sw:
+            try:
+                context["selected_weight"] = float(sw)
+            except Exception:
+                context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        else:
+            context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
         return render_template("partials/wizard_confirm.html", **context)
 
     if step_name == "confirm":
-        context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        sw = request.args.get("selected_weight")
+        if sw:
+            try:
+                context["selected_weight"] = float(sw)
+            except Exception:
+                context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        else:
+            context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
         return render_template("partials/wizard_confirm.html", **context)
 
     return "Unknown wizard step", 404

@@ -1,7 +1,7 @@
 <div class="space-y-4">
     <div class="p-3 border rounded" style="border-color: var(--edge);">
         <div class="font-semibold mb-1">Step 2: Place Spool</div>
-        <p class="text-sm soft-text">Place spool on scale and verify live weight + RFID.</p>
+        <p class="text-sm soft-text">Place spool on scale and verify weight</p>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -9,19 +9,10 @@
             <div class="text-xs soft-text uppercase">Live Weight</div>
             <div class="text-2xl mono mt-1" data-live-weight>{{ "%.2f"|format(weight_grams) if weight_grams is not none else "0.00" }} g</div>
         </div>
-        <div class="p-3 border rounded" style="border-color: var(--edge);">
-            <div class="text-xs soft-text uppercase">Latest RFID</div>
-            <div class="text-sm mono mt-1 break-all" data-live-rfid>{{ latest_uid or 'Awaiting scan' }}</div>
-        </div>
-    </div>
-
-    <div class="p-3 border rounded text-sm" style="border-color: var(--edge);">
-        <span class="soft-text">Raw ADC:</span>
-        <span class="mono" data-live-raw>--</span>
     </div>
 
     <div class="flex gap-2">
         <button class="btn-outline flex-1 uppercase" hx-get="/wizard/step/clear_scan" hx-target="#wizard-body" hx-swap="innerHTML">Back</button>
-        <button class="btn-blue flex-1 uppercase" hx-get="/wizard/step/confirm" hx-target="#wizard-body" hx-swap="innerHTML">Continue</button>
+        <button class="btn-blue flex-1 uppercase" hx-get="/wizard/step/confirm?selected_weight={{ "%.2f"|format(weight_grams if weight_grams is not none else 0) }}" hx-target="#wizard-body" hx-swap="innerHTML">Continue</button>
     </div>
 </div>

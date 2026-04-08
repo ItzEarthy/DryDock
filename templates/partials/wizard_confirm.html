@@ -1,7 +1,7 @@
 <div class="space-y-4">
     <div class="p-3 border rounded" style="border-color: var(--edge);">
         <div class="font-semibold mb-1">Step 4: Confirm + Sync</div>
-        <p class="text-sm soft-text">Review live values and sync to Spoolman.</p>
+        <p class="text-sm soft-text">Review values and sync to Spoolman.</p>
     </div>
 
     <form hx-post="/wizard/step/accept" hx-target="#wizard-result" hx-swap="innerHTML" class="space-y-3">
@@ -13,7 +13,7 @@
                     {% set spool_id = spool.id if spool.id is defined else (spool.spool_id if spool.spool_id is defined else '') %}
                     {% set filament = spool.filament if spool.filament is defined else None %}
                     {% set label = filament.name if filament and filament.name is defined else (spool.name if spool.name is defined else ('Spool #' ~ spool_id)) %}
-                    <option value="{{ spool_id }}">{{ label }} (ID {{ spool_id }})</option>
+                    <option value="{{ spool_id }}" {% if selected_spool_id is defined and selected_spool_id and spool_id == selected_spool_id %}selected{% endif %}>{{ label }} (ID {{ spool_id }})</option>
                 {% endfor %}
             </select>
         </div>
@@ -23,8 +23,8 @@
                 <input name="rfid_uid" class="input-dark mono" value="{{ latest_uid }}" data-live-rfid-input required>
             </div>
             <div>
-                <label class="block text-xs soft-text mb-1">Stable Weight (g)</label>
-                <input name="weight" class="input-dark mono" value="{{ "%.2f"|format(selected_weight if selected_weight is not none else 0) }}" data-live-weight-input required>
+                <label class="block text-xs soft-text mb-1">Weight (g)</label>
+                <input name="weight" class="input-dark mono" value="{{ "%.2f"|format(selected_weight if selected_weight is not none else 0) }}" required>
             </div>
         </div>
 
