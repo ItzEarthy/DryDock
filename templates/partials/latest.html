@@ -2,10 +2,10 @@
     <h2 class="text-2xl font-bold mb-4 section-title">Live Telemetry</h2>
     {% if log %}
         <div class="space-y-5 mt-4">
-            <div class="p-4 rounded border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3" style="border-color: var(--edge); background: {% if desiccant_healthy %}color-mix(in srgb, var(--ok) 16%, transparent){% else %}color-mix(in srgb, var(--danger) 16%, transparent){% endif %};">
+            <div class="p-4 rounded border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 {% if desiccant_healthy %}bg-green-600/10{% else %}bg-red-600/10{% endif %}" style="border-color: var(--edge);">
                 <div>
                     <div class="soft-text text-xs uppercase mb-1">Silica Status</div>
-                    <div class="font-bold text-xl" style="color: {% if desiccant_healthy %}var(--ok){% else %}var(--danger){% endif %};">{% if desiccant_healthy %}Healthy{% else %}Saturated{% endif %}</div>
+                    <div class="font-bold text-xl {% if desiccant_healthy %}text-green-400{% else %}text-red-400{% endif %}">{% if desiccant_healthy %}Healthy{% else %}Saturated{% endif %}</div>
                 </div>
                 <div class="text-2xl mono">{{ "%.1f"|format(hum_delta) if hum_delta is not none else "--" }}% &Delta;</div>
             </div>
@@ -24,9 +24,9 @@
             </div>
 
             <div class="p-6 border rounded text-center" style="border-color: var(--edge); background: color-mix(in srgb, var(--accent) 14%, transparent);">
-                <div class="text-sm soft-text uppercase mb-2">Live Weight (Temp Compensated)</div>
-                <div class="text-5xl md:text-6xl font-bold mono">{{ "%.1f"|format(weight_grams) if weight_grams is not none else "0.0" }}<span class="text-xl soft-text"> g</span></div>
-                <div class="mt-2 text-xs soft-text">EMA: {{ "%.1f"|format(stability.ema_weight) if stability.ema_weight is not none else "--" }} g</div>
+                <div class="text-sm soft-text uppercase mb-2">Live Weight</div>
+                <div class="text-5xl md:text-6xl font-bold mono">{{ "%.1f"|format(stability.ema_weight) if stability.ema_weight is not none else "0.0" }}<span class="text-xl soft-text"> g</span></div>
+                <div class="mt-2 text-xs soft-text">Auto-zero keeps near-empty readings at 0 g.</div>
             </div>
 
             <div class="p-4 border rounded flex justify-between items-center" style="border-color: var(--edge);">
@@ -34,15 +34,6 @@
                 <div class="text-base mono break-all">{{ latest_uid or "Awaiting Scan" }}</div>
             </div>
 
-            <div class="p-4 border rounded" style="border-color: var(--edge);">
-                <div class="flex justify-between items-center text-xs mb-2">
-                    <span class="soft-text uppercase">Weight Hardening</span>
-                    <span class="mono">{{ stability.progress }}%</span>
-                </div>
-                <div class="w-full h-2 rounded bg-black/20 overflow-hidden">
-                    <div class="h-full" style="width: {{ stability.progress }}%; background: linear-gradient(90deg, var(--accent), var(--accent-2));"></div>
-                </div>
-            </div>
         </div>
     {% else %}
         <div class="p-8 text-center soft-text border rounded border-dashed" style="border-color: var(--edge);">Awaiting ESP32 connection...</div>

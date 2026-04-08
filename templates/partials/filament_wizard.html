@@ -10,3 +10,43 @@
     <div id="wizard-result" class="mb-3"></div>
     <div id="wizard-body" hx-get="/wizard/step/clear_scan" hx-trigger="load" hx-swap="innerHTML"></div>
 </div>
+
+<script>
+(function () {
+    if (window.__drydockWizardLiveTimer) {
+        clearInterval(window.__drydockWizardLiveTimer);
+    }
+
+    async function refreshWizardLive() {
+        const root = document.getElementById("modal-root");
+        if (!root || root.classList.contains("hidden")) {
+            if (window.__drydockWizardLiveTimer) {
+                clearInterval(window.__drydockWizardLiveTimer);
+                window.__drydockWizardLiveTimer = null;
+            }
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/live_snapshot");
+            if (!res.ok) return;
+            const data = await res.json();
+
+            const weightText = `${Number(data.weight_grams || 0).toFixed(2)} g`;
+            const rawText = data.raw_adc === null || data.raw_adc === undefined ? "--" : Number(data.raw_adc).toFixed(3);
+            const rfidText = data.rfid_uid && String(data.rfid_uid).trim() ? data.rfid_uid : "Awaiting scan";
+
+            root.querySelectorAll("[data-live-weight]").forEach((el) => { el.textContent = weightText; });
+            root.querySelectorAll("[data-live-raw]").forEach((el) => { el.textContent = rawText; });
+            root.querySelectorAll("[data-live-rfid]").forEach((el) => { el.textContent = rfidText; });
+            root.querySelectorAll("[data-live-weight-input]").forEach((el) => { el.value = Number(data.weight_grams || 0).toFixed(2); });
+            root.querySelectorAll("[data-live-rfid-input]").forEach((el) => { if (!el.value || el.value === "Awaiting scan") el.value = rfidText; });
+        } catch (_) {
+            // Ignore temporary connectivity issues.
+        }
+    }
+
+    refreshWizardLive();
+    window.__drydockWizardLiveTimer = setInterval(refreshWizardLive, 1000);
+})();
+</script>

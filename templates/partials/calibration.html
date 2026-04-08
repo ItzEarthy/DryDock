@@ -1,6 +1,12 @@
 <h2 class="text-2xl font-bold mb-4 section-title">Scale Calibration</h2>
 
 <div class="space-y-5">
+    {% if calibration_message %}
+    <div class="p-3 rounded border text-sm {% if calibration_error %}border-red-500 text-red-400{% else %}border-green-500 text-green-400{% endif %}">
+        {{ calibration_message }}
+    </div>
+    {% endif %}
+
     <div class="p-3 rounded border text-sm" style="border-color: var(--edge); background: color-mix(in srgb, var(--accent) 10%, transparent);">
         <div class="font-semibold mb-1">Reminder Status</div>
         <div class="soft-text">Last calibration: {{ app_settings.last_calibration_at.strftime('%Y-%m-%d %H:%M') if app_settings.last_calibration_at else "Never" }}</div>

@@ -1,7 +1,7 @@
 <div class="space-y-4">
     <div class="p-3 border rounded" style="border-color: var(--edge);">
-        <div class="font-semibold mb-1">Step 1: Clear Scale + Scan RFID</div>
-        <p class="text-sm soft-text">Remove any spool from the scale, then run remote tare. Scan the RFID tag while this step is open.</p>
+        <div class="font-semibold mb-1">Step 1: Clear Scale and Scan RFID</div>
+        <p class="text-sm soft-text">Remove spool from scale, run tare, and scan RFID.</p>
     </div>
 
     {% if wizard_message %}
@@ -10,7 +10,18 @@
 
     <div class="flex justify-between items-center text-sm">
         <span class="soft-text">Latest RFID:</span>
-        <span class="mono">{{ latest_uid or 'Awaiting scan' }}</span>
+        <span class="mono" data-live-rfid>{{ latest_uid or 'Awaiting scan' }}</span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 text-sm">
+        <div class="p-2 border rounded" style="border-color: var(--edge);">
+            <div class="soft-text text-xs">Weight</div>
+            <div class="mono" data-live-weight>-- g</div>
+        </div>
+        <div class="p-2 border rounded" style="border-color: var(--edge);">
+            <div class="soft-text text-xs">Raw ADC</div>
+            <div class="mono" data-live-raw>--</div>
+        </div>
     </div>
 
     <div class="flex gap-2">

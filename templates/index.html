@@ -2,69 +2,75 @@
 {% block content %}
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
     <div class="xl:col-span-2 space-y-6">
-        <div hx-get="/partials/latest" hx-trigger="every 2s" hx-swap="innerHTML">
+        <div hx-get="/partials/latest" hx-trigger="every 8s" hx-swap="innerHTML">
             {% include 'partials/latest.html' %}
         </div>
 
         <div class="card">
-            <h2 class="text-xl font-bold mb-4 section-title">Environmental History</h2>
-            <div class="flex flex-wrap gap-2 mb-4">
-                <button class="btn-outline text-xs range-btn" data-range="1h">1 Hour</button>
-                <button class="btn-outline text-xs range-btn" data-range="24h">24 Hours</button>
-                <button class="btn-outline text-xs range-btn" data-range="7d">7 Days</button>
-
-                <select id="aggSelect" class="input-dark max-w-[160px] text-xs">
-                    <option value="raw">Raw</option>
-                    <option value="avg" selected>Average</option>
-                    <option value="min">Minimum</option>
-                    <option value="max">Maximum</option>
-                </select>
-
-                <button id="zoomReset" class="btn-outline text-xs">Reset Zoom</button>
+            <div class="flex justify-between items-center mb-4 section-title">
+                <h2 class="text-xl font-bold">Environmental History</h2>
+                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-history">Collapse</button>
             </div>
+            <div id="panel-history">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button class="btn-outline text-xs range-btn" data-range="1h">1 Hour</button>
+                    <button class="btn-outline text-xs range-btn" data-range="24h">24 Hours</button>
+                    <button class="btn-outline text-xs range-btn" data-range="7d">7 Days</button>
 
-            <div class="text-xs soft-text mb-3">
-                Breaches where humidity delta is below threshold are highlighted as red markers.
+                    <select id="aggSelect" class="input-dark max-w-[160px] text-xs">
+                        <option value="raw">Raw</option>
+                        <option value="avg" selected>Average</option>
+                        <option value="min">Minimum</option>
+                        <option value="max">Maximum</option>
+                    </select>
+
+                    <button id="zoomReset" class="btn-outline text-xs">Reset Zoom</button>
+                </div>
+
+                <div class="text-xs soft-text mb-3">
+                    Breaches where humidity delta is below threshold are highlighted as red markers.
+                </div>
+                <canvas id="envChart" height="96"></canvas>
             </div>
-            <canvas id="envChart" height="96"></canvas>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="card space-y-4">
-                <h2 class="text-lg font-bold section-title">Scale Controls</h2>
-
-                <div>
-                    <div class="text-xs soft-text uppercase mb-1">Display Unit</div>
-                    <button id="unit-toggle" class="btn-outline text-sm">Show in kg</button>
+                <div class="flex justify-between items-center section-title">
+                    <h2 class="text-lg font-bold">Scale Controls</h2>
+                    <button type="button" class="btn-outline text-xs" data-collapse-target="panel-scale">Collapse</button>
                 </div>
-
-                <div>
-                    <div class="text-xs soft-text uppercase mb-1">Current Weight</div>
-                    <div id="scale-value" class="text-4xl mono font-bold">{{ "%.2f"|format(weight_grams if weight_grams is not none else 0) }} g</div>
-                    <div class="text-xs soft-text mt-1">Stable: <span id="stable-weight" class="mono">{{ "%.2f"|format(stability.stable_weight if stability.stable_weight is not none else 0) }}</span> g</div>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-xs mb-1">
-                        <span class="soft-text uppercase">Weight Hardening</span>
-                        <span id="hardening-label" class="mono">{{ stability.progress }}%</span>
+                <div id="panel-scale" class="space-y-4">
+                    <div>
+                        <div class="text-xs soft-text uppercase mb-1">Display Unit</div>
+                        <button id="unit-toggle" class="btn-outline text-sm">Show in kg</button>
                     </div>
-                    <div class="w-full h-3 rounded bg-black/20 overflow-hidden">
-                        <div id="hardening-bar" class="h-full" style="width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2));"></div>
-                    </div>
-                </div>
 
-                <button hx-post="/api/scale/remote_tare" hx-target="#tare-result" class="btn-gray w-full uppercase">Tare</button>
-                <div id="tare-result"></div>
+                    <div>
+                        <div class="text-xs soft-text uppercase mb-1">Current Weight</div>
+                        <div id="scale-value" class="text-4xl mono font-bold">{{ "%.2f"|format(stability.ema_weight if stability.ema_weight is not none else (weight_grams if weight_grams is not none else 0)) }} g</div>
+                        <div class="text-xs soft-text mt-1">Auto-zero is active when near empty scale.</div>
+                        <div class="text-xs soft-text mt-1 mono">Raw ADC: <span id="raw-adc">{{ '%.3f'|format(log.raw_adc) if log and log.raw_adc is not none else '--' }}</span></div>
+                        <div class="text-xs soft-text mt-1 mono">Tare Offset: <span id="tare-offset">{{ '%.3f'|format(cal_settings.tare_offset) }}</span></div>
+                    </div>
+
+                    <button hx-post="/api/scale/remote_tare" hx-target="#tare-result" class="btn-gray w-full uppercase">Tare</button>
+                    <div id="tare-result"></div>
+                </div>
             </div>
 
             <div class="card space-y-4">
-                <h2 class="text-lg font-bold section-title">Filament Update Wizard</h2>
-                <p class="text-sm soft-text">Runs: Clear/Scan -> Add Spool -> Harden -> Confirm with Accept / Re-weigh / Cancel.</p>
-                <button class="btn-blue w-full uppercase" hx-get="/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Launch Wizard</button>
+                <div class="flex justify-between items-center section-title">
+                    <h2 class="text-lg font-bold">Filament Wizard</h2>
+                    <button type="button" class="btn-outline text-xs" data-collapse-target="panel-wizard">Collapse</button>
+                </div>
+                <div id="panel-wizard" class="space-y-4">
+                    <p class="text-sm soft-text">Live setup flow for RFID and weight sync.</p>
+                    <button class="btn-blue w-full uppercase" hx-get="/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Open Wizard</button>
 
-                <div class="text-xs soft-text pt-2 border-t" style="border-color: var(--edge);">
-                    Use the quick sync card for direct ID updates, or the wizard for guided flow.
+                    <div class="text-xs soft-text pt-2 border-t" style="border-color: var(--edge);">
+                        Use quick sync for direct updates, or open wizard for live guided setup.
+                    </div>
                 </div>
             </div>
         </div>
@@ -72,83 +78,103 @@
 
     <div class="space-y-6">
         <div class="card">
-            <h2 class="text-xl font-bold mb-4 section-title">Quick Sync to Spoolman</h2>
-            <form hx-post="/spoolman/sync" hx-target="#sync-result" class="space-y-4">
-                <div>
-                    <label class="block text-xs soft-text mb-1">Spoolman ID</label>
-                    <input type="number" name="spoolman_id" class="input-dark" required>
-                </div>
-                <div>
-                    <label class="block text-xs soft-text mb-1">RFID UID</label>
-                    <input type="text" name="rfid_uid" value="{{ latest_uid }}" class="input-dark mono" required>
-                </div>
-                <div>
-                    <label class="block text-xs soft-text mb-1">Current Weight (g)</label>
-                    <input type="number" step="any" name="weight" value="{{ '%.2f'|format(stability.stable_weight if stability.stable_weight is not none else (weight_grams if weight_grams is not none else 0)) }}" class="input-dark" required>
-                </div>
-                <button type="submit" class="btn-blue w-full uppercase">Update Spool</button>
-            </form>
-            <div id="sync-result" class="mt-2"></div>
-        </div>
-
-        <div class="card">
-            <h2 class="text-xl font-bold mb-4 section-title">Active Filaments</h2>
-            <div id="spool-list-wrapper" hx-get="/partials/spool_list" hx-trigger="load, every 20s" hx-swap="innerHTML">
-                {% include 'partials/spool_list.html' %}
+            <div class="flex justify-between items-center mb-4 section-title">
+                <h2 class="text-xl font-bold">Quick Sync to Spoolman</h2>
+                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-quick-sync">Collapse</button>
+            </div>
+            <div id="panel-quick-sync">
+                <form hx-post="/spoolman/sync" hx-target="#sync-result" class="space-y-4">
+                    <div>
+                        <label class="block text-xs soft-text mb-1">Spoolman ID</label>
+                        <input type="number" name="spoolman_id" class="input-dark" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs soft-text mb-1">RFID UID</label>
+                        <input type="text" name="rfid_uid" value="{{ latest_uid }}" class="input-dark mono" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs soft-text mb-1">Current Weight (g)</label>
+                        <input type="number" step="any" name="weight" value="{{ '%.2f'|format(stability.stable_weight if stability.stable_weight is not none else (weight_grams if weight_grams is not none else 0)) }}" class="input-dark" required>
+                    </div>
+                    <button type="submit" class="btn-blue w-full uppercase">Update Spool</button>
+                </form>
+                <div id="sync-result" class="mt-2"></div>
             </div>
         </div>
 
         <div class="card">
-            <h2 class="text-xl font-bold mb-4 section-title">Add Filament by RFID</h2>
-            <form hx-post="/spoolman/add_filament" hx-target="#add-filament-result" class="space-y-3">
-                <div>
-                    <label class="block text-xs soft-text mb-1">Material / Vendor</label>
-                    <select name="filament_id" class="input-dark" required>
-                        <option value="">Select filament</option>
-                        {% for filament in filament_options %}
-                            {% set vendor_name = filament.vendor.name if filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament.vendor is defined else 'Unknown Vendor') %}
-                            {% set material_name = filament.material if filament.material is defined else (filament.material_name if filament.material_name is defined else 'Unknown Material') %}
-                            {% set filament_name = filament.name if filament.name is defined else ('Filament ' ~ filament.id) %}
-                            <option value="{{ filament.id }}">{{ filament_name }} - {{ material_name }} / {{ vendor_name }}</option>
-                        {% endfor %}
-                    </select>
+            <div class="flex justify-between items-center mb-4 section-title">
+                <h2 class="text-xl font-bold">Active Filaments</h2>
+                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-filaments">Collapse</button>
+            </div>
+            <div id="panel-filaments">
+                <div id="spool-list-wrapper" hx-get="/partials/spool_list" hx-trigger="load, every 60s" hx-swap="innerHTML">
+                    {% include 'partials/spool_list.html' %}
                 </div>
-                <div>
-                    <label class="block text-xs soft-text mb-1">RFID UID</label>
-                    <input name="rfid_uid" value="{{ latest_uid }}" class="input-dark mono" required>
-                </div>
-                <div>
-                    <label class="block text-xs soft-text mb-1">Remaining Weight (g)</label>
-                    <input type="number" step="any" name="remaining_weight" value="{{ '%.2f'|format(stability.stable_weight if stability.stable_weight is not none else (weight_grams if weight_grams is not none else 0)) }}" class="input-dark" required>
-                </div>
-                <button class="btn-outline w-full uppercase">Create + Link RFID</button>
-            </form>
-            <div id="add-filament-result" class="mt-2"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex justify-between items-center mb-4 section-title">
+                <h2 class="text-xl font-bold">Add Filament by RFID</h2>
+                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-add-filament">Collapse</button>
+            </div>
+            <div id="panel-add-filament">
+                <form hx-post="/spoolman/add_filament" hx-target="#add-filament-result" class="space-y-3">
+                    <div>
+                        <label class="block text-xs soft-text mb-1">Material / Vendor</label>
+                        <select name="filament_id" class="input-dark" required>
+                            <option value="">Select filament</option>
+                            {% for filament in filament_options %}
+                                {% set vendor_name = filament.vendor.name if filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament.vendor is defined else 'Unknown Vendor') %}
+                                {% set material_name = filament.material if filament.material is defined else (filament.material_name if filament.material_name is defined else 'Unknown Material') %}
+                                {% set filament_name = filament.name if filament.name is defined else ('Filament ' ~ filament.id) %}
+                                <option value="{{ filament.id }}">{{ filament_name }} - {{ material_name }} / {{ vendor_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs soft-text mb-1">RFID UID</label>
+                        <input name="rfid_uid" value="{{ latest_uid }}" class="input-dark mono" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs soft-text mb-1">Remaining Weight (g)</label>
+                        <input type="number" step="any" name="remaining_weight" value="{{ '%.2f'|format(stability.stable_weight if stability.stable_weight is not none else (weight_grams if weight_grams is not none else 0)) }}" class="input-dark" required>
+                    </div>
+                    <button class="btn-outline w-full uppercase">Create + Link RFID</button>
+                </form>
+                <div id="add-filament-result" class="mt-2"></div>
+            </div>
         </div>
 
         <div class="card space-y-3">
-            <h2 class="text-xl font-bold mb-2 section-title">System Health</h2>
-            <div class="flex justify-between text-sm pb-2 mt-3">
-                <span class="soft-text">DryDock ESP32</span>
-                <span id="health-esp32" class="font-bold flex items-center gap-2"><span class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ sensor_status.msg }}</span>
+            <div class="flex justify-between items-center mb-2 section-title">
+                <h2 class="text-xl font-bold">System Health</h2>
+                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-health">Collapse</button>
             </div>
-            <div class="flex justify-between text-sm pb-2">
-                <span class="soft-text">Spoolman API</span>
-                <span id="health-spoolman" class="font-bold flex items-center gap-2"><span class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ spoolman_status.msg }}</span>
-            </div>
-            <div class="flex justify-between text-sm pb-2">
-                <span class="soft-text">Database</span>
-                <span id="health-db" class="font-bold flex items-center gap-2"><span class="dot {% if db_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ db_status.msg }}</span>
-            </div>
-            <div class="flex justify-between text-sm pt-2 border-t" style="border-color: var(--edge);">
-                <span class="soft-text">Uptime</span>
-                <span id="health-uptime" class="mono">{{ uptime }}</span>
+            <div id="panel-health" class="space-y-3">
+                <div class="flex justify-between text-sm pb-2 mt-3">
+                    <span class="soft-text">DryDock ESP32</span>
+                    <span id="health-esp32" class="font-bold flex items-center gap-2"><span class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ sensor_status.msg }}</span>
+                </div>
+                <div class="flex justify-between text-sm pb-2">
+                    <span class="soft-text">Spoolman API</span>
+                    <span id="health-spoolman" class="font-bold flex items-center gap-2"><span class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ spoolman_status.msg }}</span>
+                </div>
+                <div class="flex justify-between text-sm pb-2">
+                    <span class="soft-text">Database</span>
+                    <span id="health-db" class="font-bold flex items-center gap-2"><span class="dot {% if db_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ db_status.msg }}</span>
+                </div>
+                <div class="flex justify-between text-sm pt-2 border-t" style="border-color: var(--edge);">
+                    <span class="soft-text">Uptime</span>
+                    <span id="health-uptime" class="mono">{{ uptime }}</span>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div id="weight-seed" data-weight="{{ '%.6f'|format(weight_grams if weight_grams is not none else 0) }}" hidden></div>
+<div id="weight-seed" data-weight="{{ '%.6f'|format(stability.ema_weight if stability.ema_weight is not none else (weight_grams if weight_grams is not none else 0)) }}" hidden></div>
 
 <script>
 let envChart = null;
@@ -158,9 +184,13 @@ let useKilograms = false;
 let lastWeightGrams = Number(document.getElementById("weight-seed")?.dataset.weight || 0);
 
 if (window.Chart) {
-    const zoomPlugin = window.ChartZoom || window["chartjs-plugin-zoom"];
-    if (zoomPlugin) {
-        Chart.register(zoomPlugin);
+    try {
+        const zoomPlugin = window.ChartZoom || window["chartjs-plugin-zoom"];
+        if (zoomPlugin) {
+            Chart.register(zoomPlugin);
+        }
+    } catch (_) {
+        // Keep dashboard running even if zoom plugin registration fails.
     }
 }
 
@@ -186,24 +216,22 @@ function renderWeight(grams) {
     }
 }
 
-async function refreshStability() {
+async function refreshSnapshot() {
     try {
-        const res = await fetch("/api/weight/stability");
+        const res = await fetch("/api/live_snapshot");
         if (!res.ok) return;
         const data = await res.json();
-        const stable = typeof data.stable_weight === "number" ? data.stable_weight : lastWeightGrams;
-        lastWeightGrams = stable;
 
-        renderWeight(stable);
+        const live = typeof data.weight_grams === "number" ? data.weight_grams : lastWeightGrams;
+        lastWeightGrams = live;
+        renderWeight(live);
 
-        const label = document.getElementById("hardening-label");
-        const bar = document.getElementById("hardening-bar");
-        const stableEl = document.getElementById("stable-weight");
-        if (label) label.textContent = `${data.progress || 0}%`;
-        if (bar) bar.style.width = `${data.progress || 0}%`;
-        if (stableEl) stableEl.textContent = Number(stable).toFixed(2);
+        const rawEl = document.getElementById("raw-adc");
+        const tareEl = document.getElementById("tare-offset");
+        if (rawEl) rawEl.textContent = data.raw_adc === null || data.raw_adc === undefined ? "--" : Number(data.raw_adc).toFixed(3);
+        if (tareEl) tareEl.textContent = data.tare_offset === null || data.tare_offset === undefined ? "--" : Number(data.tare_offset).toFixed(3);
     } catch (_) {
-        // Keep UI responsive even if the endpoint briefly fails.
+        // Ignore transient snapshot fetch errors.
     }
 }
 
@@ -235,6 +263,9 @@ async function refreshHealth() {
 async function loadGraph() {
     const url = `/api/history?range=${encodeURIComponent(chartRange)}&aggregation=${encodeURIComponent(chartAggregation)}`;
     const res = await fetch(url);
+    if (!res.ok) {
+        return;
+    }
     const data = await res.json();
 
     const labels = (data.labels || []).map((iso) => {
@@ -316,45 +347,49 @@ async function loadGraph() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    setRangeButtons();
-    loadGraph();
-    renderWeight(lastWeightGrams || 0);
-    refreshStability();
-    refreshHealth();
+    try {
+        setRangeButtons();
+        loadGraph();
+        renderWeight(lastWeightGrams || 0);
+        refreshSnapshot();
+        refreshHealth();
 
-    setInterval(refreshStability, 2000);
-    setInterval(refreshHealth, 15000);
+        setInterval(refreshSnapshot, 2000);
+        setInterval(refreshHealth, 30000);
 
-    document.querySelectorAll(".range-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            chartRange = btn.dataset.range;
-            setRangeButtons();
-            loadGraph();
+        document.querySelectorAll(".range-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                chartRange = btn.dataset.range;
+                setRangeButtons();
+                loadGraph();
+            });
         });
-    });
 
-    const aggSelect = document.getElementById("aggSelect");
-    if (aggSelect) {
-        aggSelect.addEventListener("change", () => {
-            chartAggregation = aggSelect.value;
-            loadGraph();
-        });
-    }
+        const aggSelect = document.getElementById("aggSelect");
+        if (aggSelect) {
+            aggSelect.addEventListener("change", () => {
+                chartAggregation = aggSelect.value;
+                loadGraph();
+            });
+        }
 
-    const zoomReset = document.getElementById("zoomReset");
-    if (zoomReset) {
-        zoomReset.addEventListener("click", () => {
-            if (envChart) envChart.resetZoom();
-        });
-    }
+        const zoomReset = document.getElementById("zoomReset");
+        if (zoomReset) {
+            zoomReset.addEventListener("click", () => {
+                if (envChart) envChart.resetZoom();
+            });
+        }
 
-    const unitToggle = document.getElementById("unit-toggle");
-    if (unitToggle) {
-        unitToggle.addEventListener("click", () => {
-            useKilograms = !useKilograms;
-            unitToggle.textContent = useKilograms ? "Show in g" : "Show in kg";
-            renderWeight(lastWeightGrams || 0);
-        });
+        const unitToggle = document.getElementById("unit-toggle");
+        if (unitToggle) {
+            unitToggle.addEventListener("click", () => {
+                useKilograms = !useKilograms;
+                unitToggle.textContent = useKilograms ? "Show in g" : "Show in kg";
+                renderWeight(lastWeightGrams || 0);
+            });
+        }
+    } catch (_) {
+        // Prevent one frontend error from disabling live telemetry updates.
     }
 });
 </script>

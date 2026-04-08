@@ -156,6 +156,52 @@
             closeModal();
         }
     });
+
+    function setCollapseState(panelId, isOpen) {
+        const key = `drydock-collapse-${panelId}`;
+        localStorage.setItem(key, isOpen ? "open" : "closed");
+    }
+
+    function getCollapseState(panelId) {
+        const key = `drydock-collapse-${panelId}`;
+        return localStorage.getItem(key);
+    }
+
+    function togglePanel(panelId, btn) {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        const willOpen = panel.classList.contains("hidden");
+        panel.classList.toggle("hidden", !willOpen);
+        if (btn) {
+            btn.textContent = willOpen ? "Collapse" : "Expand";
+        }
+        setCollapseState(panelId, willOpen);
+    }
+
+    function initializeCollapsibles(root = document) {
+        root.querySelectorAll("[data-collapse-target]").forEach((btn) => {
+            const panelId = btn.getAttribute("data-collapse-target");
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+
+            const state = getCollapseState(panelId);
+            if (state === "closed") {
+                panel.classList.add("hidden");
+                btn.textContent = "Expand";
+            } else {
+                panel.classList.remove("hidden");
+                btn.textContent = "Collapse";
+            }
+
+            if (!btn.dataset.collapseBound) {
+                btn.addEventListener("click", () => togglePanel(panelId, btn));
+                btn.dataset.collapseBound = "1";
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => initializeCollapsibles(document));
+    document.body.addEventListener("htmx:afterSwap", (evt) => initializeCollapsibles(evt.detail.target || document));
     </script>
 </body>
 </html>

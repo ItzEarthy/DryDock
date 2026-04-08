@@ -22,9 +22,15 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 APP_START_TIME = datetime.utcnow()
 EMA_ALPHA = 0.2
-SETTLE_THRESHOLD_GRAMS = 3.0
-SETTLE_DELAY_SECONDS = 4.0
+AUTO_ZERO_GRAMS = 8.0
+AUTO_ZERO_ADJUST_ALPHA = 0.08
 DEFAULT_BACKUP_INTERVAL_HOURS = 24
+SERVICE_STATUS_TTL_SECONDS = 15
+
+_SERVICE_STATUS_CACHE = {
+    "spoolman": {"at": None, "key": None, "value": (False, "Unknown")},
+    "db": {"at": None, "value": (False, "Unknown")},
+}
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///drydock.db"
@@ -325,33 +331,13 @@ def calculate_weight_grams(raw_adc, temp_1, calibration, settings):
 
 
 def compute_weight_stability(logs, calibration, settings):
-    ema_weight = None
-    final_stable_weight = None
-    last_change_time = None
-    valid_points = 0
-
-    for log in logs:
+    weights = []
+    for log in logs[-8:]:
         weight = calculate_weight_grams(log.raw_adc, log.temp_1, calibration, settings)
-        if weight is None:
-            continue
+        if weight is not None:
+            weights.append(weight)
 
-        valid_points += 1
-        if ema_weight is None:
-            ema_weight = weight
-            final_stable_weight = weight
-            last_change_time = log.timestamp
-            continue
-
-        if abs(weight - ema_weight) > 50.0:
-            ema_weight = weight
-        else:
-            ema_weight = (EMA_ALPHA * weight) + ((1.0 - EMA_ALPHA) * ema_weight)
-
-        if abs(ema_weight - final_stable_weight) > SETTLE_THRESHOLD_GRAMS:
-            final_stable_weight = ema_weight
-            last_change_time = log.timestamp
-
-    if ema_weight is None:
+    if not weights:
         return {
             "progress": 0,
             "stable": False,
@@ -360,23 +346,34 @@ def compute_weight_stability(logs, calibration, settings):
             "samples": 0,
         }
 
-    elapsed = (datetime.utcnow() - last_change_time).total_seconds() if last_change_time else 0
-    progress = int(min(100, max(0, (elapsed / SETTLE_DELAY_SECONDS) * 100)))
+    live_weight = weights[-1]
+    if abs(live_weight) <= AUTO_ZERO_GRAMS:
+        live_weight = 0.0
+
     return {
-        "progress": progress,
-        "stable": progress >= 100,
-        "stable_weight": round(final_stable_weight, 2),
-        "ema_weight": round(ema_weight, 2),
-        "samples": valid_points,
+        "progress": 100,
+        "stable": True,
+        "stable_weight": round(live_weight, 2),
+        "ema_weight": round(live_weight, 2),
+        "samples": len(weights),
     }
 
 
 def check_database_status():
+    cache = _SERVICE_STATUS_CACHE["db"]
+    now = datetime.utcnow()
+    if cache["at"] and (now - cache["at"]).total_seconds() < SERVICE_STATUS_TTL_SECONDS:
+        return cache["value"]
+
     try:
         db.session.execute(text("SELECT 1"))
-        return True, "Online"
+        result = (True, "Online")
     except Exception:
-        return False, "Unavailable"
+        result = (False, "Unavailable")
+
+    cache["at"] = now
+    cache["value"] = result
+    return result
 
 
 def _spoolman_request(path, method="GET", payload=None, timeout=5, base_url=None):
@@ -416,11 +413,27 @@ def _normalize_collection(payload):
 def check_spoolman(url):
     if not url:
         return False, "Not Configured"
+
+    cache = _SERVICE_STATUS_CACHE["spoolman"]
+    now = datetime.utcnow()
+    key = (url or "").rstrip("/")
+    if (
+        cache["at"]
+        and cache["key"] == key
+        and (now - cache["at"]).total_seconds() < SERVICE_STATUS_TTL_SECONDS
+    ):
+        return cache["value"]
+
     try:
         _spoolman_request("/api/v1/info", method="GET", timeout=3, base_url=url)
-        return True, "Connected"
+        result = (True, "Connected")
     except Exception:
-        return False, "Unreachable"
+        result = (False, "Unreachable")
+
+    cache["at"] = now
+    cache["key"] = key
+    cache["value"] = result
+    return result
 
 
 def fetch_active_spools(limit=25):
@@ -731,12 +744,26 @@ def update_data():
     if rfid_uid == "":
         rfid_uid = None
 
+    temp_1 = _to_float(data.get("temp_1"))
+    hum_1 = _to_float(data.get("hum_1"))
+    temp_2 = _to_float(data.get("temp_2"))
+    hum_2 = _to_float(data.get("hum_2"))
+
+    # Auto-zero correction: when the scale is effectively empty, slowly adapt tare offset.
+    if raw_adc is not None:
+        current_weight = calculate_weight_grams(raw_adc, temp_1, calibration, settings)
+        if current_weight is not None and abs(current_weight) <= AUTO_ZERO_GRAMS:
+            calibration.tare_offset = (
+                ((1.0 - AUTO_ZERO_ADJUST_ALPHA) * calibration.tare_offset)
+                + (AUTO_ZERO_ADJUST_ALPHA * raw_adc)
+            )
+
     db.session.add(
         SensorLog(
-            temp_1=_to_float(data.get("temp_1")),
-            hum_1=_to_float(data.get("hum_1")),
-            temp_2=_to_float(data.get("temp_2")),
-            hum_2=_to_float(data.get("hum_2")),
+            temp_1=temp_1,
+            hum_1=hum_1,
+            temp_2=temp_2,
+            hum_2=hum_2,
             raw_adc=raw_adc,
             rfid_uid=rfid_uid,
         )
@@ -908,13 +935,20 @@ def manual_backup():
 
 
 # --- CALIBRATION ---
+def render_calibration_card(message=None, is_error=False):
+    context = build_context(include_spools=False)
+    context["calibration_message"] = message
+    context["calibration_error"] = is_error
+    return render_template("partials/calibration.html", **context)
+
+
 @app.post("/calibration/tare")
 @admin_required
 def auto_tare():
     success, message = _perform_software_tare()
     if not success:
-        return f"<div class='text-[#E72A2E] text-sm mt-2'>{message}</div>", 400
-    return render_template("partials/calibration.html", **build_context(include_spools=False))
+        return render_calibration_card(message=message, is_error=True)
+    return render_calibration_card(message=message, is_error=False)
 
 
 @app.post("/calibration/multiplier")
@@ -923,18 +957,18 @@ def auto_calibrate_single():
     known_weight = _to_float(request.form.get("known_weight"))
     latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
     if not known_weight or not latest or latest.raw_adc is None:
-        return "<div class='text-[#E72A2E] text-sm mt-2'>Invalid input or missing sensor data.</div>", 400
+        return render_calibration_card(message="Invalid input or missing sensor data.", is_error=True)
 
     calibration = get_or_create(CalibrationSettings)
     diff = latest.raw_adc - calibration.tare_offset
     if diff == 0:
-        return "<div class='text-[#E72A2E] text-sm mt-2'>Scale unchanged since tare.</div>", 400
+        return render_calibration_card(message="Scale unchanged since tare.", is_error=True)
 
     calibration.calibration_multiplier = known_weight / diff
     get_or_create(AppSettings).last_calibration_at = datetime.utcnow()
     db.session.commit()
     log_event("INFO", "calibration_single_point", known_weight=known_weight, multiplier=calibration.calibration_multiplier)
-    return render_template("partials/calibration.html", **build_context(include_spools=False))
+    return render_calibration_card(message="Calibration multiplier updated.", is_error=False)
 
 
 @app.post("/calibration/samples/start")
@@ -942,12 +976,12 @@ def auto_calibrate_single():
 def start_calibration_samples():
     known_weight = _to_float(request.form.get("known_weight"))
     if not known_weight or known_weight <= 0:
-        return "<div class='text-[#E72A2E] text-sm mt-2'>Enter a valid known weight.</div>", 400
+        return render_calibration_card(message="Enter a valid known weight.", is_error=True)
 
     session["calibration_known_weight"] = known_weight
     session["calibration_samples"] = []
     session.modified = True
-    return render_template("partials/calibration.html", **build_context(include_spools=False))
+    return render_calibration_card(message="Guided sampling started.", is_error=False)
 
 
 @app.post("/calibration/samples/add")
@@ -955,16 +989,16 @@ def start_calibration_samples():
 def add_calibration_sample():
     samples = session.get("calibration_samples", [])
     if len(samples) >= 20:
-        return render_template("partials/calibration.html", **build_context(include_spools=False))
+        return render_calibration_card(message="Maximum sample count reached (20).", is_error=False)
 
     latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
     if not latest or latest.raw_adc is None:
-        return "<div class='text-[#E72A2E] text-sm mt-2'>No sensor sample available.</div>", 400
+        return render_calibration_card(message="No sensor sample available.", is_error=True)
 
     samples.append(latest.raw_adc)
     session["calibration_samples"] = samples
     session.modified = True
-    return render_template("partials/calibration.html", **build_context(include_spools=False))
+    return render_calibration_card(message=f"Captured sample {len(samples)}.", is_error=False)
 
 
 @app.post("/calibration/samples/finish")
@@ -974,13 +1008,13 @@ def finish_calibration_samples():
     known_weight = _to_float(session.get("calibration_known_weight"))
 
     if known_weight is None or len(samples) < 10:
-        return "<div class='text-[#E72A2E] text-sm mt-2'>Capture at least 10 samples first.</div>", 400
+        return render_calibration_card(message="Capture at least 10 samples first.", is_error=True)
 
     calibration = get_or_create(CalibrationSettings)
     average_raw = mean(samples)
     diff = average_raw - calibration.tare_offset
     if diff == 0:
-        return "<div class='text-[#E72A2E] text-sm mt-2'>Sample set matches tare offset.</div>", 400
+        return render_calibration_card(message="Sample set matches tare offset.", is_error=True)
 
     calibration.calibration_multiplier = known_weight / diff
     settings = get_or_create(AppSettings)
@@ -999,7 +1033,7 @@ def finish_calibration_samples():
         avg_raw=average_raw,
         multiplier=calibration.calibration_multiplier,
     )
-    return render_template("partials/calibration.html", **build_context(include_spools=False))
+    return render_calibration_card(message="Guided calibration complete.", is_error=False)
 
 
 @app.post("/api/scale/remote_tare")
@@ -1023,6 +1057,47 @@ def weight_stability_api():
             "stable_weight": context["stability"]["stable_weight"],
             "ema_weight": context["stability"]["ema_weight"],
             "samples": context["stability"]["samples"],
+        }
+    )
+
+
+@app.get("/api/live_snapshot")
+def live_snapshot_api():
+    latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+    calibration = get_or_create(CalibrationSettings)
+    settings = get_or_create(AppSettings)
+    latest_uid_row = (
+        SensorLog.query.filter(SensorLog.rfid_uid.isnot(None), SensorLog.rfid_uid != "")
+        .order_by(SensorLog.timestamp.desc())
+        .first()
+    )
+
+    if not latest:
+        return jsonify(
+            {
+                "ok": False,
+                "weight_grams": 0.0,
+                "raw_adc": None,
+                "tare_offset": calibration.tare_offset,
+                "rfid_uid": latest_uid_row.rfid_uid if latest_uid_row else "",
+                "timestamp": None,
+            }
+        )
+
+    weight = calculate_weight_grams(latest.raw_adc, latest.temp_1, calibration, settings)
+    if weight is None:
+        weight = 0.0
+    if abs(weight) <= AUTO_ZERO_GRAMS:
+        weight = 0.0
+
+    return jsonify(
+        {
+            "ok": True,
+            "weight_grams": round(weight, 2),
+            "raw_adc": latest.raw_adc,
+            "tare_offset": round(calibration.tare_offset, 3),
+            "rfid_uid": latest_uid_row.rfid_uid if latest_uid_row else "",
+            "timestamp": latest.timestamp.isoformat(),
         }
     )
 
@@ -1152,10 +1227,12 @@ def wizard_step(step_name):
         return render_template("partials/wizard_add_spool.html", **context)
 
     if step_name == "harden":
-        return render_template("partials/wizard_harden.html", **context)
+        context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        return render_template("partials/wizard_confirm.html", **context)
 
     if step_name == "harden_status":
-        return render_template("partials/wizard_harden_status.html", **context)
+        context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        return render_template("partials/wizard_confirm.html", **context)
 
     if step_name == "confirm":
         context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
@@ -1503,7 +1580,7 @@ void loop() {
     lastRfidUid = scanned;
   }
 
-  if (millis() - lastPostMs >= 30000) {
+    if (millis() - lastPostMs >= 5000) {
     lastPostMs = millis();
 
     float temp1 = am1Found ? am2320_1->readTemperature() : NAN;

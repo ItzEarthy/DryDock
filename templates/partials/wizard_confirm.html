@@ -1,7 +1,7 @@
 <div class="space-y-4">
     <div class="p-3 border rounded" style="border-color: var(--edge);">
         <div class="font-semibold mb-1">Step 4: Confirm + Sync</div>
-        <p class="text-sm soft-text">Review and sync to Spoolman. You can re-weigh or cancel if needed.</p>
+        <p class="text-sm soft-text">Review live values and sync to Spoolman.</p>
     </div>
 
     <form hx-post="/wizard/step/accept" hx-target="#wizard-result" hx-swap="innerHTML" class="space-y-3">
@@ -20,11 +20,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
                 <label class="block text-xs soft-text mb-1">RFID UID</label>
-                <input name="rfid_uid" class="input-dark mono" value="{{ latest_uid }}" required>
+                <input name="rfid_uid" class="input-dark mono" value="{{ latest_uid }}" data-live-rfid-input required>
             </div>
             <div>
                 <label class="block text-xs soft-text mb-1">Stable Weight (g)</label>
-                <input name="weight" class="input-dark mono" value="{{ "%.2f"|format(selected_weight if selected_weight is not none else 0) }}" required>
+                <input name="weight" class="input-dark mono" value="{{ "%.2f"|format(selected_weight if selected_weight is not none else 0) }}" data-live-weight-input required>
             </div>
         </div>
 
