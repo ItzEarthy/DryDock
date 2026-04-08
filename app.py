@@ -390,14 +390,31 @@ def _spoolman_request(path, method="GET", payload=None, timeout=5, base_url=None
         headers={"Content-Type": "application/json"},
     )
 
-    with urllib.request.urlopen(req, timeout=timeout) as response:
-        body = response.read().decode("utf-8").strip()
-        if not body:
-            return {}
+    try:
+        if not req.full_url.startswith(('http://', 'https://')):
+            raise ValueError(f"Invalid URL scheme: {req.full_url}")
+
+        with urllib.request.urlopen(req, timeout=timeout) as response: # nosec B310
+            body = response.read().decode("utf-8").strip()
+            if not body:
+                return {}
+            try:
+                return json.loads(body)
+            except json.JSONDecodeError:
+                return {"raw": body}
+    except urllib.error.HTTPError as he:
+        # Read error body (if any) to aid debugging, include in raised exception
         try:
-            return json.loads(body)
-        except json.JSONDecodeError:
-            return {"raw": body}
+            err_body = he.read().decode("utf-8").strip()
+        except Exception:
+            err_body = None
+        msg = f"HTTP Error {he.code}: {he.reason}"
+        if err_body:
+            # prefer the server-provided message when available
+            msg = f"{msg} - {err_body}"
+        raise Exception(msg)
+    except urllib.error.URLError as ue:
+        raise Exception(str(ue))
 
 
 def _normalize_collection(payload):
@@ -1228,10 +1245,11 @@ def wizard_step(step_name):
                 spool_rfid = spool_rfid.strip() if spool_rfid else ""
             if spool_rfid and spool_rfid == latest_uid:
                 spool_id_val = (spool.get("id") if isinstance(spool, dict) else getattr(spool, "id", None)) or (spool.get("spool_id") if isinstance(spool, dict) else getattr(spool, "spool_id", None))
+                # Normalize to string so template comparison matches rendered option values
                 try:
-                    selected_spool_id = int(spool_id_val)
+                    selected_spool_id = str(int(spool_id_val))
                 except Exception:
-                    selected_spool_id = spool_id_val
+                    selected_spool_id = str(spool_id_val)
                 break
     context["selected_spool_id"] = selected_spool_id
 
@@ -1294,11 +1312,38 @@ def wizard_accept():
     if weight is None:
         weight = 0.0
 
-    payload = {"id": spool_id, "remaining_weight": weight, "extra": {"rfid_uid": rfid_uid}}
+    payload = {"id": int(spool_id), "remaining_weight": weight, "extra": {"rfid_uid": rfid_uid}}
     try:
-        _spoolman_request(f"/api/v1/spool/{spool_id}", method="PATCH", payload=payload)
+        # Log the attempted payload and endpoint for debugging
+        log_event("DEBUG", "spool_sync_attempt", payload=payload, endpoint=f"/api/v1/spool/{int(spool_id)}")
+        result = _spoolman_request(f"/api/v1/spool/{int(spool_id)}", method="PATCH", payload=payload)
+        # Log the response body returned by Spoolman
+        log_event("DEBUG", "spool_sync_response", response=result)
+        db.session.add(
+            SpoolmanSyncLog(
+                rfid_uid=rfid_uid,
+                spoolman_id=int(spool_id),
+                success=True,
+                message=f"Wizard synced with remaining weight {weight}",
+            )
+        )
+        db.session.commit()
+        log_event("INFO", "spool_sync", spoolman_id=spool_id, rfid_uid=rfid_uid, weight=weight)
         return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Wizard complete: spool updated in Spoolman.</div>"
     except Exception as exc:
+        try:
+            db.session.add(
+                SpoolmanSyncLog(
+                    rfid_uid=rfid_uid,
+                    spoolman_id=int(spool_id) if spool_id is not None else None,
+                    success=False,
+                    message=str(exc),
+                )
+            )
+            db.session.commit()
+        except Exception:
+            pass
+        log_event("ERROR", "spool_sync_failed", spoolman_id=spool_id, rfid_uid=rfid_uid, error=str(exc))
         return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Wizard sync failed: {exc}</div>", 400
 
 
@@ -1781,4 +1826,5 @@ if __name__ == "__main__":
     debug_mode = True
     if not debug_mode or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         start_scheduler()
-    app.run(host="0.0.0.0", port=5000, debug=debug_mode)
+    host_ip = "0.0.0.0"  # nosec B104
+    app.run(host=host_ip, port=5000, debug=debug_mode)

@@ -13,7 +13,7 @@
                     {% set spool_id = spool.id if spool.id is defined else (spool.spool_id if spool.spool_id is defined else '') %}
                     {% set filament = spool.filament if spool.filament is defined else None %}
                     {% set label = filament.name if filament and filament.name is defined else (spool.name if spool.name is defined else ('Spool #' ~ spool_id)) %}
-                    <option value="{{ spool_id }}" {% if selected_spool_id is defined and selected_spool_id and spool_id == selected_spool_id %}selected{% endif %}>{{ label }} (ID {{ spool_id }})</option>
+                    <option value="{{ spool_id }}" {% if selected_spool_id is defined and selected_spool_id and (spool_id ~ '') == selected_spool_id %}selected{% endif %}>{{ label }} (ID {{ spool_id }})</option>
                 {% endfor %}
             </select>
         </div>
