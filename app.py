@@ -11,13 +11,14 @@ from functools import wraps
 from io import BytesIO, StringIO
 from pathlib import Path
 from statistics import mean
+import time
 
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import Flask, Response, jsonify, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, send_file, session, url_for, g
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from sqlalchemy import func, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 APP_START_TIME = datetime.utcnow()
@@ -31,6 +32,14 @@ _SERVICE_STATUS_CACHE = {
     "spoolman": {"at": None, "key": None, "value": (False, "Unknown")},
     "db": {"at": None, "value": (False, "Unknown")},
 }
+
+# Caches for external Spoolman network requests
+_SPOOLMAN_DATA_CACHE = {
+    "spools": {"at": None, "data": []},
+    "filaments": {"at": None, "data": []}
+}
+
+_HAS_USER_CACHE = {"at": None, "value": None}
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///drydock.db"
@@ -128,18 +137,45 @@ def inject_user():
 
 @app.before_request
 def check_setup():
+    # Start request timer early (this runs before auth redirects).
+    try:
+        request._start_time = time.perf_counter()
+    except Exception:
+        request._start_time = None
+
     path = request.path or "/"
     if path.startswith("/static") or path.startswith("/api/update"):
         return
 
     public_paths = {"/login", "/setup", "/favicon.ico"}
-    has_user = User.query.first() is not None
+
+    # Avoid querying User table on every request.
+    now = datetime.utcnow()
+    if _HAS_USER_CACHE["at"] and (now - _HAS_USER_CACHE["at"]).total_seconds() < 10:
+        has_user = bool(_HAS_USER_CACHE["value"])
+    else:
+        has_user = User.query.first() is not None
+        _HAS_USER_CACHE["at"] = now
+        _HAS_USER_CACHE["value"] = has_user
 
     if not has_user and path != "/setup":
         return redirect(url_for("setup"))
 
     if has_user and "user_id" not in session and path not in public_paths:
         return redirect(url_for("login"))
+
+
+@app.after_request
+def _log_request_timing(response):
+    start = getattr(request, "_start_time", None)
+    if start:
+        duration_ms = (time.perf_counter() - start) * 1000.0
+        # Add a lightweight header to expose server processing time
+        try:
+            response.headers["X-Process-Time-ms"] = f"{duration_ms:.2f}"
+        except Exception:
+            pass
+    return response
 
 
 # --- LOGGING ---
@@ -206,11 +242,18 @@ def _to_int(value, default=None):
 
 
 def get_or_create(model):
+    # Fix: Caches db object in the Flask request context to avoid duplicate SQLite lookups
+    cache_key = f"_cached_{model.__name__}"
+    if hasattr(g, cache_key):
+        return getattr(g, cache_key)
+
     obj = model.query.first()
     if not obj:
         obj = model()
         db.session.add(obj)
         db.session.commit()
+    
+    setattr(g, cache_key, obj)
     return obj
 
 
@@ -224,6 +267,9 @@ def ensure_schema_extensions():
         return
 
     db.create_all()
+    
+    # Fix: Enable WAL mode for concurrent SQLite reads and writes
+    db.session.execute(text("PRAGMA journal_mode=WAL;"))
 
     user_cols = _table_columns("user")
     if "role" not in user_cols:
@@ -245,6 +291,16 @@ def ensure_schema_extensions():
     for col_name, col_ddl in app_additions:
         if col_name not in app_cols:
             db.session.execute(text(f"ALTER TABLE app_settings ADD COLUMN {col_ddl}"))
+
+    # SQLite performance: ensure indexes on hot SensorLog query patterns.
+    # These are safe to run repeatedly.
+    try:
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_sensor_log_timestamp ON sensor_log(timestamp)"))
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_sensor_log_rfid_uid ON sensor_log(rfid_uid)"))
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS idx_sensor_log_rfid_uid_timestamp ON sensor_log(rfid_uid, timestamp)"))
+    except Exception:
+        # Don't block startup if index creation fails for any reason.
+        pass
 
     db.session.commit()
 
@@ -376,7 +432,7 @@ def check_database_status():
     return result
 
 
-def _spoolman_request(path, method="GET", payload=None, timeout=5, base_url=None):
+def _spoolman_request(path, method="GET", payload=None, timeout=1.0, base_url=None):
     settings = get_or_create(AppSettings)
     url_base = (base_url or settings.spoolman_url or "").rstrip("/")
     if not url_base:
@@ -403,14 +459,12 @@ def _spoolman_request(path, method="GET", payload=None, timeout=5, base_url=None
             except json.JSONDecodeError:
                 return {"raw": body}
     except urllib.error.HTTPError as he:
-        # Read error body (if any) to aid debugging, include in raised exception
         try:
             err_body = he.read().decode("utf-8").strip()
         except Exception:
             err_body = None
         msg = f"HTTP Error {he.code}: {he.reason}"
         if err_body:
-            # prefer the server-provided message when available
             msg = f"{msg} - {err_body}"
         raise Exception(msg)
     except urllib.error.URLError as ue:
@@ -442,7 +496,7 @@ def check_spoolman(url):
         return cache["value"]
 
     try:
-        _spoolman_request("/api/v1/info", method="GET", timeout=3, base_url=url)
+        _spoolman_request("/api/v1/info", method="GET", timeout=1.0, base_url=url)
         result = (True, "Connected")
     except Exception:
         result = (False, "Unreachable")
@@ -454,12 +508,21 @@ def check_spoolman(url):
 
 
 def fetch_active_spools(limit=25):
+    # Fix: Cache external Spoolman network calls to prevent locking up partial rendering
+    cache = _SPOOLMAN_DATA_CACHE["spools"]
+    now = datetime.utcnow()
+    
+    if cache["at"] and (now - cache["at"]).total_seconds() < 15:
+        return cache["data"][:limit]
+
     endpoints = [f"/api/v1/spool?limit={limit}", f"/api/v1/spool"]
     for endpoint in endpoints:
         try:
             payload = _spoolman_request(endpoint)
             spools = _normalize_collection(payload)
             if spools:
+                cache["at"] = now
+                cache["data"] = spools
                 return spools[:limit]
         except Exception:
             continue
@@ -467,12 +530,21 @@ def fetch_active_spools(limit=25):
 
 
 def fetch_filament_options(limit=150):
+    # Fix: Cache external Spoolman network calls
+    cache = _SPOOLMAN_DATA_CACHE["filaments"]
+    now = datetime.utcnow()
+    
+    if cache["at"] and (now - cache["at"]).total_seconds() < 15:
+        return cache["data"][:limit]
+
     endpoints = [f"/api/v1/filament?limit={limit}", "/api/v1/filament"]
     for endpoint in endpoints:
         try:
             payload = _spoolman_request(endpoint)
             filaments = _normalize_collection(payload)
             if filaments:
+                cache["at"] = now
+                cache["data"] = filaments
                 return filaments[:limit]
         except Exception:
             continue
@@ -632,7 +704,7 @@ def build_context(include_spools=True):
         sensor_age = (datetime.utcnow() - latest_log.timestamp).total_seconds()
         sensor_status = {"ok": sensor_age < 180, "msg": "Online" if sensor_age < 180 else "Offline"}
 
-    spoolman_ok, spoolman_msg = check_spoolman(settings.spoolman_url)
+    spoolman_ok, spoolman_msg = (False, "Unknown")
     db_ok, db_msg = check_database_status()
     uptime = format_uptime(datetime.utcnow() - APP_START_TIME)
 
@@ -720,7 +792,7 @@ def logout():
 # --- DASHBOARD ROUTES ---
 @app.route("/")
 def index():
-    return render_template("index.html", **build_context(include_spools=True))
+    return render_template("index.html", **build_context(include_spools=False))
 
 
 @app.route("/settings_page")
@@ -730,11 +802,15 @@ def settings_page():
 
 @app.route("/partials/<section>")
 def render_partial(section):
-    allowed = {"latest", "calibration", "spool_list"}
+    allowed = {"latest", "calibration", "spool_list", "filament_options"}
     if section not in allowed:
         return "Not found", 404
     include_spools = section == "spool_list"
-    return render_template(f"partials/{section}.html", **build_context(include_spools=include_spools))
+    include_filaments = section in {"filament_options"}
+    ctx = build_context(include_spools=include_spools)
+    if include_filaments:
+        ctx["filament_options"] = fetch_filament_options()
+    return render_template(f"partials/{section}.html", **ctx)
 
 
 # --- SENSOR INGEST ---
@@ -766,7 +842,6 @@ def update_data():
     temp_2 = _to_float(data.get("temp_2"))
     hum_2 = _to_float(data.get("hum_2"))
 
-    # Auto-zero correction: when the scale is effectively empty, slowly adapt tare offset.
     if raw_adc is not None:
         current_weight = calculate_weight_grams(raw_adc, temp_1, calibration, settings)
         if current_weight is not None and abs(current_weight) <= AUTO_ZERO_GRAMS:
@@ -1066,16 +1141,22 @@ def remote_tare():
 
 @app.get("/api/weight/stability")
 def weight_stability_api():
-    context = build_context(include_spools=False)
-    return jsonify(
-        {
-            "progress": context["stability"]["progress"],
-            "stable": context["stability"]["stable"],
-            "stable_weight": context["stability"]["stable_weight"],
-            "ema_weight": context["stability"]["ema_weight"],
-            "samples": context["stability"]["samples"],
-        }
-    )
+    # Fix: Limit the DB query to only the 8 logs needed for computation, avoiding the massive 180-log query.
+    calibration = get_or_create(CalibrationSettings)
+    settings = get_or_create(AppSettings)
+    
+    recent_logs = SensorLog.query.order_by(SensorLog.timestamp.desc()).limit(8).all()
+    recent_logs.reverse()
+    
+    stability = compute_weight_stability(recent_logs, calibration, settings)
+    
+    return jsonify({
+        "progress": stability["progress"],
+        "stable": stability["stable"],
+        "stable_weight": stability["stable_weight"],
+        "ema_weight": stability["ema_weight"],
+        "samples": stability["samples"],
+    })
 
 
 @app.get("/api/live_snapshot")
@@ -1230,12 +1311,10 @@ def wizard_modal():
 def wizard_step(step_name):
     context = build_context(include_spools=True)
 
-    # Auto-detect spool matching latest scanned RFID (if any)
     selected_spool_id = None
     latest_uid = (context.get("latest_uid") or "").strip()
     if latest_uid:
         for spool in context.get("spoolman_spools", []):
-            # spool is a dict parsed from Spoolman JSON; check 'extra' then top-level rfid fields
             spool_extra = spool.get("extra") if isinstance(spool, dict) else getattr(spool, "extra", None)
             spool_rfid = None
             if isinstance(spool_extra, dict):
@@ -1245,7 +1324,6 @@ def wizard_step(step_name):
                 spool_rfid = spool_rfid.strip() if spool_rfid else ""
             if spool_rfid and spool_rfid == latest_uid:
                 spool_id_val = (spool.get("id") if isinstance(spool, dict) else getattr(spool, "id", None)) or (spool.get("spool_id") if isinstance(spool, dict) else getattr(spool, "spool_id", None))
-                # Normalize to string so template comparison matches rendered option values
                 try:
                     selected_spool_id = str(int(spool_id_val))
                 except Exception:
@@ -1266,29 +1344,7 @@ def wizard_step(step_name):
     if step_name == "add_spool":
         return render_template("partials/wizard_add_spool.html", **context)
 
-    if step_name == "harden":
-        sw = request.args.get("selected_weight")
-        if sw:
-            try:
-                context["selected_weight"] = float(sw)
-            except Exception:
-                context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
-        else:
-            context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
-        return render_template("partials/wizard_confirm.html", **context)
-
-    if step_name == "harden_status":
-        sw = request.args.get("selected_weight")
-        if sw:
-            try:
-                context["selected_weight"] = float(sw)
-            except Exception:
-                context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
-        else:
-            context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
-        return render_template("partials/wizard_confirm.html", **context)
-
-    if step_name == "confirm":
+    if step_name == "harden" or step_name == "harden_status" or step_name == "confirm":
         sw = request.args.get("selected_weight")
         if sw:
             try:
@@ -1314,10 +1370,8 @@ def wizard_accept():
 
     payload = {"id": int(spool_id), "remaining_weight": weight, "extra": {"rfid_uid": rfid_uid}}
     try:
-        # Log the attempted payload and endpoint for debugging
         log_event("DEBUG", "spool_sync_attempt", payload=payload, endpoint=f"/api/v1/spool/{int(spool_id)}")
         result = _spoolman_request(f"/api/v1/spool/{int(spool_id)}", method="PATCH", payload=payload)
-        # Log the response body returned by Spoolman
         log_event("DEBUG", "spool_sync_response", response=result)
         db.session.add(
             SpoolmanSyncLog(
@@ -1363,9 +1417,71 @@ def get_history():
     settings = get_or_create(AppSettings)
     calibration = get_or_create(CalibrationSettings)
     since = datetime.utcnow() - timedelta(hours=max(hours, 1))
-    logs = SensorLog.query.filter(SensorLog.timestamp >= since).order_by(SensorLog.timestamp.asc()).all()
 
-    history = build_history(logs, aggregation, hours, settings, calibration)
+    bucket_seconds = _history_bucket_seconds(hours, aggregation)
+    if bucket_seconds and aggregation in {"avg", "min", "max"}:
+        bucket_expr = text(
+            f"(CAST(strftime('%s', timestamp) AS INTEGER) / {int(bucket_seconds)}) * {int(bucket_seconds)}"
+        )
+
+        agg_map = {
+            "avg": func.avg,
+            "min": func.min,
+            "max": func.max,
+        }
+        agg_fn = agg_map.get(aggregation, func.avg)
+
+        rows = (
+            db.session.query(
+                bucket_expr.label("bucket"),
+                agg_fn(SensorLog.temp_1).label("temp_1"),
+                agg_fn(SensorLog.temp_2).label("temp_2"),
+                agg_fn(SensorLog.hum_1).label("hum_1"),
+                agg_fn(SensorLog.hum_2).label("hum_2"),
+                agg_fn(SensorLog.raw_adc).label("raw_adc"),
+            )
+            .filter(SensorLog.timestamp >= since)
+            .group_by(bucket_expr)
+            .order_by(bucket_expr.asc())
+            .all()
+        )
+
+        labels, hum_1, hum_2, temp_1, temp_2, weight, anomalies = [], [], [], [], [], [], []
+        for row in rows:
+            ts = datetime.utcfromtimestamp(int(row.bucket))
+            labels.append(ts.isoformat())
+
+            h1 = row.hum_1
+            h2 = row.hum_2
+            t1 = row.temp_1
+            t2 = row.temp_2
+            raw_adc = row.raw_adc
+
+            hum_1.append(h1)
+            hum_2.append(h2)
+            temp_1.append(t1)
+            temp_2.append(t2)
+            weight.append(calculate_weight_grams(raw_adc, t1, calibration, settings))
+
+            if h1 is not None and h2 is not None:
+                delta = h2 - h1
+                if delta < settings.humidity_threshold:
+                    anomalies.append({"x": ts.isoformat(), "y": delta})
+
+        history = {
+            "labels": labels,
+            "hum_1": hum_1,
+            "hum_2": hum_2,
+            "temp_1": temp_1,
+            "temp_2": temp_2,
+            "weight": weight,
+            "anomalies": anomalies,
+            "threshold": settings.humidity_threshold,
+        }
+    else:
+        logs = SensorLog.query.filter(SensorLog.timestamp >= since).order_by(SensorLog.timestamp.asc()).all()
+        history = build_history(logs, aggregation, hours, settings, calibration)
+
     history["range"] = range_name
     history["aggregation"] = aggregation
     return jsonify(history)
@@ -1374,12 +1490,15 @@ def get_history():
 @app.route("/api/system/health")
 def get_system_health():
     context = build_context(include_spools=False)
+    settings = get_or_create(AppSettings)
+    spoolman_ok, spoolman_msg = check_spoolman(settings.spoolman_url)
+    db_ok, db_msg = check_database_status()
     return jsonify(
         {
             "uptime": context["uptime"],
             "esp32": context["sensor_status"],
-            "spoolman": context["spoolman_status"],
-            "database": context["db_status"],
+            "spoolman": {"ok": spoolman_ok, "msg": spoolman_msg},
+            "database": {"ok": db_ok, "msg": db_msg},
         }
     )
 
@@ -1663,13 +1782,32 @@ void setup() {
 void loop() {
   readWeightFilter();
 
+  bool forceUpdate = false;
+  bool bypassThrottle = false;
+
+  // 1. Check for new RFID
   String scanned = readRfidUid();
-  if (scanned.length() > 0) {
+  if (scanned.length() > 0 && scanned != lastRfidUid) {
     lastRfidUid = scanned;
+    forceUpdate = true;
+    bypassThrottle = true; // Send immediately, no matter what
   }
 
-    if (millis() - lastPostMs >= 5000) {
+  // 2. Check for Major Weight Jumps (Spool added or removed)
+  // If the jump is under 200g, it will just wait for the normal 5-second heartbeat
+  if (fabs(emaWeight - lastPostedWeight) > 200.0) {
+    forceUpdate = true;
+  }
+
+  unsigned long timeSinceLastPost = millis() - lastPostMs;
+
+  // Post to server if:
+  // - New RFID scanned (bypasses throttle completely)
+  // - Weight jumped 200g+ AND 1 second has passed (prevents DDoS while scale bounces)
+  // - 5 seconds have passed (standard idle heartbeat)
+  if (bypassThrottle || (forceUpdate && timeSinceLastPost >= 1000) || timeSinceLastPost >= 5000) {
     lastPostMs = millis();
+    lastPostedWeight = emaWeight; // Record what we are about to send to the server
 
     float temp1 = am1Found ? am2320_1->readTemperature() : NAN;
     float hum1 = am1Found ? am2320_1->readHumidity() : NAN;
@@ -1684,6 +1822,7 @@ void loop() {
     postTelemetry(temp1, hum1, temp2, hum2);
   }
 
+  // Handle Serial Commands
   if (Serial.available() > 0) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
