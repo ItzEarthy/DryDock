@@ -1,0 +1,10 @@
+{% if filament_options %}
+    {% for filament in filament_options %}
+        {% set vendor_name = filament.vendor.name if filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament.vendor is defined else 'Unknown Vendor') %}
+        {% set material_name = filament.material if filament.material is defined else (filament.material_name if filament.material_name is defined else 'Unknown Material') %}
+        {% set filament_name = filament.name if filament.name is defined else ('Filament ' ~ filament.id) %}
+        <option value="{{ filament.id }}">{{ filament_name }} - {{ material_name }} / {{ vendor_name }}</option>
+    {% endfor %}
+{% else %}
+    <option value="">No filaments returned from Spoolman</option>
+{% endif %}

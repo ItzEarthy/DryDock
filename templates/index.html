@@ -2,9 +2,7 @@
 {% block content %}
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
     <div class="xl:col-span-2 space-y-6">
-        <div hx-get="/partials/latest" hx-trigger="every 8s" hx-swap="innerHTML">
-            {% include 'partials/latest.html' %}
-        </div>
+        <div hx-get="/partials/latest" hx-trigger="load, every 8s" hx-swap="innerHTML"></div>
 
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
@@ -108,9 +106,7 @@
                 <button type="button" class="btn-outline text-xs" data-collapse-target="panel-filaments">Collapse</button>
             </div>
             <div id="panel-filaments">
-                <div id="spool-list-wrapper" hx-get="/partials/spool_list" hx-trigger="load, every 60s" hx-swap="innerHTML">
-                    {% include 'partials/spool_list.html' %}
-                </div>
+                <div id="spool-list-wrapper" hx-get="/partials/spool_list" hx-trigger="load, every 60s" hx-swap="innerHTML"></div>
             </div>
         </div>
 
@@ -123,14 +119,8 @@
                 <form hx-post="/spoolman/add_filament" hx-target="#add-filament-result" class="space-y-3">
                     <div>
                         <label class="block text-xs soft-text mb-1">Material / Vendor</label>
-                        <select name="filament_id" class="input-dark" required>
-                            <option value="">Select filament</option>
-                            {% for filament in filament_options %}
-                                {% set vendor_name = filament.vendor.name if filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament.vendor is defined else 'Unknown Vendor') %}
-                                {% set material_name = filament.material if filament.material is defined else (filament.material_name if filament.material_name is defined else 'Unknown Material') %}
-                                {% set filament_name = filament.name if filament.name is defined else ('Filament ' ~ filament.id) %}
-                                <option value="{{ filament.id }}">{{ filament_name }} - {{ material_name }} / {{ vendor_name }}</option>
-                            {% endfor %}
+                        <select name="filament_id" class="input-dark" required hx-get="/partials/filament_options" hx-trigger="load" hx-swap="innerHTML">
+                            <option value="">Loading filaments…</option>
                         </select>
                     </div>
                     <div>
