@@ -3,84 +3,112 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+# --- FLAG PARSING ---
+SKIP_WIFI=false
+FIX_ENV=false
+
+while getopts "sf" opt; do
+  case $opt in
+    s) SKIP_WIFI=true ;;
+    f) FIX_ENV=true ;;
+    *) echo "Usage: ./install.sh [-s (skip wifi)] [-f (only add missing .env parts)]"; exit 1 ;;
+  esac
+done
+
 echo "Starting DryDock Installation..."
 
 APP_DIR="$(pwd)"
 APP_USER="$(whoami)"
+ENV_FILE=".env"
+
+# Ensure .env exists
+touch "$ENV_FILE"
+
+# Helper function to prompt only if needed
+prompt_if_missing() {
+    local key=$1
+    local prompt_msg=$2
+    local secret=$3
+
+    # If -f (fix-env) is enabled, skip if the key already exists and isn't empty
+    if [ "$FIX_ENV" = true ] && grep -q "^$key=" "$ENV_FILE" && [ -n "$(grep "^$key=" "$ENV_FILE" | cut -d'=' -f2- | tr -d '\"')" ]; then
+        return
+    fi
+
+    if [ "$secret" = "true" ]; then
+        read -s -p "$prompt_msg: " val
+        echo ""
+    else
+        read -p "$prompt_msg: " val
+    fi
+
+    # Update or append to .env
+    if grep -q "^$key=" "$ENV_FILE"; then
+        sed -i "s|^$key=.*|$key=\"$val\"|" "$ENV_FILE"
+    else
+        echo "$key=\"$val\"" >> "$ENV_FILE"
+    fi
+}
 
 # --- 1. INTERACTIVE SETUP ---
 echo ""
-echo "--- ESP32 Firmware Configuration ---"
-read -p "Enter the WiFi SSID for DryDock: " WIFI_SSID
-read -s -p "Enter the WiFi Password: " WIFI_PASS
-echo ""
+echo "--- Configuration ---"
 
-echo "Select your ESP32 Board Type:"
-echo "1) Standard ESP32 (Dev Module)"
-echo "2) ESP32-S3 (Dev Kit)"
-echo "3) ESP32-C3 (Dev Kit)"
-read -p "Enter choice [1-3]: " BOARD_CHOICE
+if [ "$SKIP_WIFI" = false ]; then
+    prompt_if_missing "WIFI_SSID" "Enter WiFi SSID" "false"
+    prompt_if_missing "WIFI_PASS" "Enter WiFi Password" "true"
+fi
 
-case $BOARD_CHOICE in
-    2) BOARD_ID="esp32-s3-devkitc-1" ;;
-    3) BOARD_ID="esp32-c3-devkitc-02" ;;
-    *) BOARD_ID="esp32dev" ;;
-esac
+prompt_if_missing "BOARD_ID" "Enter Board ID (esp32dev, esp32-s3-devkitc-1, esp32-c3-devkitc-02)" "false"
 
-echo "BOARD_ID=\"$BOARD_ID\"" >> .env
+# Update PI_IP automatically every time
+PI_IP=$(hostname -I | awk '{print $1}')
+if grep -q "^PI_IP=" "$ENV_FILE"; then
+    sed -i "s|^PI_IP=.*|PI_IP=\"$PI_IP\"|" "$ENV_FILE"
+else
+    echo "PI_IP=\"$PI_IP\"" >> "$ENV_FILE"
+fi
 
-echo "WIFI_SSID=\"$WIFI_SSID\"" > .env
-echo "WIFI_PASS=\"$WIFI_PASS\"" >> .env
-echo "Variables saved to .env."
-
-echo ""
-echo "--- Klipper Integration ---"
-read -p "Do you want to add DryDock to Moonraker's update manager? (y/N): " ADD_MOONRAKER
-if [[ "$ADD_MOONRAKER" =~ ^[Yy]$ ]]; then
-    MOONRAKER_CONF="$HOME/printer_data/config/moonraker.conf"
-    
-    if [ -f "$MOONRAKER_CONF" ]; then
-        echo "Appending DryDock to $MOONRAKER_CONF..."
-        cat <<EOF >> "$MOONRAKER_CONF"
+# Moonraker update manager prompt (only if -f is not set or it's missing)
+if ! grep -q "update_manager drydock" ~/printer_data/config/moonraker.conf 2>/dev/null; then
+    read -p "Add DryDock to Moonraker Update Manager? (y/N): " ADD_MOONRAKER
+    if [[ "$ADD_MOONRAKER" =~ ^[Yy]$ ]]; then
+        MOONRAKER_CONF="$HOME/printer_data/config/moonraker.conf"
+        if [ -f "$MOONRAKER_CONF" ]; then
+            cat <<EOF >> "$MOONRAKER_CONF"
 
 [update_manager drydock]
 type: git_repo
-path: ~/DryDock
+path: $APP_DIR
 origin: https://github.com/ItzEarthy/DryDock.git
 primary_branch: main
 is_system_service: False
 EOF
-        echo "Successfully added. Restart Moonraker later to see it in your UI."
-    else
-        echo "Could not find moonraker.conf at $MOONRAKER_CONF. Skipping."
+        fi
     fi
 fi
-echo ""
 
-# --- 2. SYSTEM DEPENDENCIES ---
+# --- 2. SYSTEM DEPENDENCIES & COMPILER FIX ---
 echo "Installing system dependencies..."
 sudo apt update
 sudo apt install -y python3-venv python3-pip curl git build-essential
 
-# --- RASPBERRY PI COMPILER FIX ---
+# Raspberry Pi toolchain linker fix for Trixie/32-bit architecture
 if [ -f "/lib/ld-linux-armhf.so.3" ] && [ ! -f "/lib/ld-linux.so.3" ]; then
     echo "Applying Raspberry Pi toolchain linker fix..."
     sudo ln -s /lib/ld-linux-armhf.so.3 /lib/ld-linux.so.3
 fi
 
-# --- 3. ESP32 USB PERMISSIONS ---
-echo "Setting up USB permissions for flashing the ESP32..."
+# --- 3. USB PERMISSIONS ---
+echo "Setting up USB permissions..."
 curl -fsSL https://raw.githubusercontent.com/platformio/platformio-core/develop/scripts/99-platformio-udev.rules | sudo tee /etc/udev/rules.d/99-platformio-udev.rules > /dev/null
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-sudo usermod -a -G dialout $APP_USER
+sudo udevadm control --reload-rules && sudo udevadm trigger
+sudo usermod -a -G dialout "$APP_USER"
 
 # --- 4. PYTHON ENVIRONMENT ---
 echo "Setting up Python Virtual Environment..."
-python3 -m venv .venv
+[ ! -d ".venv" ] && python3 -m venv .venv
 source .venv/bin/activate
-
-echo "Installing Python packages..."
 pip install Flask Flask-SQLAlchemy Werkzeug APScheduler Flask-Migrate requests platformio
 
 # --- 5. DATABASE ---
@@ -108,18 +136,12 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-echo "Enabling and starting DryDock service..."
 sudo systemctl daemon-reload
 sudo systemctl enable drydock.service
 sudo systemctl restart drydock.service
 
-# --- 7. FINISH ---
-# Get the Pi's local IP address and append to .env
-PI_IP=$(hostname -I | awk '{print $1}')
-echo "PI_IP=\"$PI_IP\"" >> .env
-
 echo "====================================================="
 echo " Installation Complete! "
-echo " DryDock dashboard: http://$PI_IP:5000"
-echo " Note: You may need to log out and back in for USB permissions to take effect."
+echo " Dashboard: http://$PI_IP:5000"
+echo " Usage: ./install.sh -s (skip wifi) or -f (fix/add missing)"
 echo "====================================================="
