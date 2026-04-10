@@ -51,6 +51,7 @@ Adafruit_NAU7802* nau;
 
 unsigned long lastSensorRead = 0;
 unsigned long lastPostMs = 0;
+float lastPostedWeight = 0.0;
 
 bool rfidFound = false;
 bool am1Found = false;
