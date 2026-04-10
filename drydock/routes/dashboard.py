@@ -25,7 +25,7 @@ from ..utils.spoolman import (
     fetch_active_spools,
     fetch_filament_options,
 )
-from .auth import admin_required, get_current_user
+from .auth import get_current_user, login_required
 
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -118,15 +118,6 @@ def build_context(include_spools=True):
         "calibration_samples_count": len(samples),
         "calibration_known_weight": known_weight,
         "active_theme": settings.theme if settings.theme in {"dark", "light"} else "dark",
-        "permission_matrix": [
-            {"feature": "Dashboard & telemetry", "admin": True, "user": True},
-            {"feature": "Run spool workflows", "admin": True, "user": True},
-            {"feature": "Save settings", "admin": True, "user": False},
-            {"feature": "Calibration + tare", "admin": True, "user": False},
-            {"feature": "Import/export config", "admin": True, "user": False},
-            {"feature": "Backups", "admin": True, "user": False},
-            {"feature": "Firmware builder", "admin": True, "user": False},
-        ],
     }
 
 
@@ -154,7 +145,7 @@ def render_partial(section):
 
 
 @dashboard_bp.post("/settings")
-@admin_required
+@login_required
 def save_settings():
     settings = get_or_create(AppSettings)
 
@@ -215,7 +206,7 @@ def test_spoolman_connection():
 
 
 @dashboard_bp.get("/settings/export")
-@admin_required
+@login_required
 def export_settings():
     settings = get_or_create(AppSettings)
     calibration = get_or_create(CalibrationSettings)
@@ -252,7 +243,7 @@ def export_settings():
 
 
 @dashboard_bp.post("/settings/import")
-@admin_required
+@login_required
 def import_settings():
     upload = request.files.get("config_file")
     if not upload:
@@ -298,7 +289,7 @@ def import_settings():
 
 
 @dashboard_bp.post("/settings/backup")
-@admin_required
+@login_required
 def manual_backup():
     success, message, backup_path = create_database_backup(reason="manual")
     if success:
@@ -314,7 +305,7 @@ def render_calibration_card(message=None, is_error=False):
 
 
 @dashboard_bp.post("/calibration/tare")
-@admin_required
+@login_required
 def auto_tare():
     success, message = _perform_software_tare()
     if not success:
@@ -323,7 +314,7 @@ def auto_tare():
 
 
 @dashboard_bp.post("/calibration/multiplier")
-@admin_required
+@login_required
 def auto_calibrate_single():
     known_weight = _to_float(request.form.get("known_weight"))
     latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
@@ -348,7 +339,7 @@ def auto_calibrate_single():
 
 
 @dashboard_bp.post("/calibration/samples/start")
-@admin_required
+@login_required
 def start_calibration_samples():
     known_weight = _to_float(request.form.get("known_weight"))
     if not known_weight or known_weight <= 0:
@@ -361,7 +352,7 @@ def start_calibration_samples():
 
 
 @dashboard_bp.post("/calibration/samples/add")
-@admin_required
+@login_required
 def add_calibration_sample():
     samples = session.get("calibration_samples", [])
     if len(samples) >= 20:
@@ -378,7 +369,7 @@ def add_calibration_sample():
 
 
 @dashboard_bp.post("/calibration/samples/finish")
-@admin_required
+@login_required
 def finish_calibration_samples():
     samples = session.get("calibration_samples", [])
     known_weight = _to_float(session.get("calibration_known_weight"))
@@ -648,7 +639,7 @@ def wizard_accept():
 
 
 @dashboard_bp.route("/build_firmware", methods=["POST"])
-@admin_required
+@login_required
 def build_firmware():
     ssid = request.form.get("ssid", "")
     password = request.form.get("password", "")

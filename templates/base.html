@@ -123,9 +123,6 @@
             </div>
         </div>
         <div class="flex items-center gap-3 flex-wrap justify-end">
-            {% if current_user %}
-            <span class="chip uppercase">{{ current_user.role }}</span>
-            {% endif %}
             <nav class="flex gap-2">
             <a href="/" class="nav-link {% if request.path == '/' %}nav-active{% endif %}">Dashboard</a>
             <a href="/settings_page" class="nav-link {% if request.path == '/settings_page' %}nav-active{% endif %}">Settings</a>

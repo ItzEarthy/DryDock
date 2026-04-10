@@ -19,25 +19,17 @@
     <div class="p-4 border rounded" style="border-color: var(--edge);">
         <p class="text-sm font-bold mb-1">1. Tare Scale</p>
         <p class="text-xs soft-text mb-3">Remove all weight and run a tare using the latest sensor sample.</p>
-        {% if current_user and current_user.role == 'admin' %}
         <button hx-post="/calibration/tare" hx-target="#calibration-card" class="btn-gray w-full uppercase">Zero Scale</button>
-        {% else %}
-        <div class="text-xs soft-text">Admin permission required.</div>
-        {% endif %}
         <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Offset:</span><span>{{ "%.3f"|format(cal_settings.tare_offset) }}</span></div>
     </div>
 
     <div class="p-4 border rounded" style="border-color: var(--edge);">
         <p class="text-sm font-bold mb-1">2. Quick Single-Point Multiplier</p>
         <p class="text-xs soft-text mb-3">Place a known weight and set multiplier immediately.</p>
-        {% if current_user and current_user.role == 'admin' %}
         <form hx-post="/calibration/multiplier" hx-target="#calibration-card" class="flex gap-2">
             <input type="number" step="any" name="known_weight" placeholder="Known grams" class="input-dark flex-1" required>
             <button type="submit" class="btn-blue uppercase">Set</button>
         </form>
-        {% else %}
-        <div class="text-xs soft-text">Admin permission required.</div>
-        {% endif %}
         <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Multiplier:</span><span>{{ "%.8f"|format(cal_settings.calibration_multiplier) }}</span></div>
     </div>
 
@@ -45,7 +37,6 @@
         <p class="text-sm font-bold">3. Guided Sampling (10-20 readings)</p>
         <p class="text-xs soft-text">This mode captures repeated samples to average out noise before calculating the multiplier.</p>
 
-        {% if current_user and current_user.role == 'admin' %}
         <form hx-post="/calibration/samples/start" hx-target="#calibration-card" class="flex gap-2">
             <input type="number" step="any" name="known_weight" value="{{ calibration_known_weight if calibration_known_weight else '' }}" placeholder="Known grams" class="input-dark flex-1" required>
             <button type="submit" class="btn-outline uppercase text-sm">Start</button>
@@ -60,8 +51,5 @@
             <button hx-post="/calibration/samples/add" hx-target="#calibration-card" class="btn-gray uppercase text-sm flex-1">Capture Sample</button>
             <button hx-post="/calibration/samples/finish" hx-target="#calibration-card" class="btn-blue uppercase text-sm flex-1">Finalize</button>
         </div>
-        {% else %}
-        <div class="text-xs soft-text">Admin permission required.</div>
-        {% endif %}
     </div>
 </div>
