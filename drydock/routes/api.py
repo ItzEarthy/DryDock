@@ -223,6 +223,10 @@ def live_snapshot_api():
             }
         )
 
+    # Consider the ESP32 "connected" only if latest telemetry is recent
+    sensor_age = (datetime.utcnow() - latest.timestamp).total_seconds()
+    esp_ok = sensor_age < 180
+
     weight = calculate_weight_grams(latest.raw_adc, latest.temp_1, calibration, settings)
     if weight is None:
         weight = 0.0
@@ -231,9 +235,9 @@ def live_snapshot_api():
 
     return jsonify(
         {
-            "ok": True,
-            "weight_grams": round(weight, 2),
-            "raw_adc": latest.raw_adc,
+            "ok": bool(esp_ok),
+            "weight_grams": round(weight, 2) if esp_ok else None,
+            "raw_adc": latest.raw_adc if esp_ok else None,
             "tare_offset": round(calibration.tare_offset, 3),
             "rfid_uid": latest_uid_row.rfid_uid if latest_uid_row else "",
             "timestamp": latest.timestamp.isoformat(),

@@ -16,7 +16,7 @@ _SPOOLMAN_DATA_CACHE = {
 }
 
 
-def _spoolman_request(path, method="GET", payload=None, timeout=1.0, base_url=None):
+def _spoolman_request(path, method="GET", payload=None, timeout=3.0, base_url=None):
     settings = get_or_create(AppSettings)
     url_base = (base_url or settings.spoolman_url or "").rstrip("/")
     if not url_base:
@@ -80,10 +80,12 @@ def check_spoolman(url):
         return cache["value"]
 
     try:
-        _spoolman_request("/api/v1/info", method="GET", timeout=1.0, base_url=url)
+        _spoolman_request("/api/v1/info", method="GET", timeout=3.0, base_url=url)
         result = (True, "Connected")
-    except Exception:
-        result = (False, "Unreachable")
+    except Exception as exc:
+        # Surface the exception message to make troubleshooting easier in UI and logs
+        msg = str(exc) or "Unreachable"
+        result = (False, msg)
 
     cache["at"] = now
     cache["key"] = key

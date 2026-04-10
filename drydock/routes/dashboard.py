@@ -56,31 +56,47 @@ def _perform_software_tare():
 
 
 def build_context(include_spools=True):
-    latest_log = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
     calibration = get_or_create(CalibrationSettings)
     settings = get_or_create(AppSettings)
 
-    uid_log = (
-        SensorLog.query.filter(SensorLog.rfid_uid.isnot(None), SensorLog.rfid_uid != "")
-        .order_by(SensorLog.timestamp.desc())
-        .first()
-    )
+    # Determine whether ESP32 telemetry is currently online. If offline, avoid exposing
+    # live telemetry in the UI (prevents stale values from being shown or acted upon).
+    sensor_status = _sensor_status()
+    if sensor_status.get("ok"):
+        latest_log = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+        uid_log = (
+            SensorLog.query.filter(SensorLog.rfid_uid.isnot(None), SensorLog.rfid_uid != "")
+            .order_by(SensorLog.timestamp.desc())
+            .first()
+        )
 
-    recent_logs = SensorLog.query.order_by(SensorLog.timestamp.desc()).limit(180).all()
-    recent_logs.reverse()
-    stability = compute_weight_stability(recent_logs, calibration, settings)
+        recent_logs = SensorLog.query.order_by(SensorLog.timestamp.desc()).limit(180).all()
+        recent_logs.reverse()
+        stability = compute_weight_stability(recent_logs, calibration, settings)
 
-    hum_delta = None
-    desiccant_healthy = None
-    weight_grams = None
-    if latest_log:
-        if latest_log.hum_1 is not None and latest_log.hum_2 is not None:
-            hum_delta = latest_log.hum_2 - latest_log.hum_1
-            desiccant_healthy = hum_delta >= settings.humidity_threshold
-        weight_grams = calculate_weight_grams(latest_log.raw_adc, latest_log.temp_1, calibration, settings)
+        hum_delta = None
+        desiccant_healthy = None
+        weight_grams = None
+        if latest_log:
+            if latest_log.hum_1 is not None and latest_log.hum_2 is not None:
+                hum_delta = latest_log.hum_2 - latest_log.hum_1
+                desiccant_healthy = hum_delta >= settings.humidity_threshold
+            weight_grams = calculate_weight_grams(latest_log.raw_adc, latest_log.temp_1, calibration, settings)
+    else:
+        # ESP32 is offline: hide live telemetry and related UI values
+        latest_log = None
+        uid_log = None
+        recent_logs = []
+        stability = {"progress": 0, "stable": False, "stable_weight": None, "ema_weight": None, "samples": 0}
+        hum_delta = None
+        desiccant_healthy = None
+        weight_grams = None
 
-    spoolman_ok, spoolman_msg = (False, "Unknown")
+    # Determine service statuses
     from ..utils.database import check_database_status
+    from ..utils.spoolman import check_spoolman
+
+    spoolman_ok, spoolman_msg = check_spoolman(settings.spoolman_url)
 
     db_ok, db_msg = check_database_status()
     uptime = format_uptime(datetime.utcnow() - APP_START_TIME)
@@ -95,8 +111,9 @@ def build_context(include_spools=True):
     samples = session.get("calibration_samples", [])
     known_weight = session.get("calibration_known_weight")
 
-    spools = fetch_active_spools() if include_spools else []
-    filaments = fetch_filament_options() if include_spools else []
+    # Only fetch Spoolman lists when Spoolman is reachable
+    spools = fetch_active_spools() if include_spools and spoolman_ok else []
+    filaments = fetch_filament_options() if include_spools and spoolman_ok else []
 
     return {
         "log": latest_log,
@@ -108,12 +125,14 @@ def build_context(include_spools=True):
         "weight_kg": (weight_grams / 1000.0) if weight_grams is not None else None,
         "desiccant_healthy": desiccant_healthy,
         "stability": stability,
-        "sensor_status": _sensor_status(),
+        "sensor_status": sensor_status,
         "spoolman_status": {"ok": spoolman_ok, "msg": spoolman_msg},
         "db_status": {"ok": db_ok, "msg": db_msg},
         "uptime": uptime,
         "spoolman_spools": spools,
         "filament_options": filaments,
+        "spoolman_connected": bool(spoolman_ok),
+        "sensor_connected": sensor_status.get("ok", False),
         "calibration_due": calibration_due,
         "calibration_samples_count": len(samples),
         "calibration_known_weight": known_weight,

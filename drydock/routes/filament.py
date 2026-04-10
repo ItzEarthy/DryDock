@@ -41,13 +41,20 @@ def spoolman_sync():
     spoolman_id = (request.form.get("spoolman_id") or "").strip()
     rfid_uid = (request.form.get("rfid_uid") or "").strip()
     weight = _to_float(request.form.get("weight"))
+    empty_weight = _to_float(request.form.get("empty_weight"))
 
-    if not spoolman_id.isdigit() or not rfid_uid:
-        return "<div class='text-[#E72A2E] text-sm'>Invalid spool ID or RFID UID.</div>", 400
+    if not spoolman_id.isdigit():
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Invalid spool ID. Please select a spool.</div>", 200
+    if not rfid_uid:
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>RFID UID is missing. Please scan a tag first.</div>", 200
     if weight is None:
         weight = 0.0
+    if empty_weight is None:
+        empty_weight = 0.0
 
-    payload = {"id": int(spoolman_id), "remaining_weight": weight, "extra": {"rfid_uid": rfid_uid}}
+    remaining = max(0.0, weight - empty_weight)
+    import json
+    payload = {"id": int(spoolman_id), "remaining_weight": remaining, "extra": {"rfid_uid": json.dumps(rfid_uid)}}
     try:
         _spoolman_request(f"/api/v1/spool/{int(spoolman_id)}", method="PATCH", payload=payload)
         from ..extensions import db
@@ -57,32 +64,36 @@ def spoolman_sync():
                 rfid_uid=rfid_uid,
                 spoolman_id=int(spoolman_id),
                 success=True,
-                message=f"Synced with remaining weight {weight}",
+                message=f"Synced with remaining weight {remaining}",
             )
         )
         db.session.commit()
-        log_event("INFO", "spool_sync", spoolman_id=spoolman_id, rfid_uid=rfid_uid, weight=weight)
-        return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Synced successfully.</div>"
+        log_event("INFO", "spool_sync", spoolman_id=spoolman_id, rfid_uid=rfid_uid, weight=remaining)
+        return f"<div class='font-bold text-[#35AB57] text-center p-2 border border-[#35AB57] rounded'>Saved!</div>"
     except Exception as exc:
-        from ..extensions import db
-
-        db.session.add(
-            SpoolmanSyncLog(
-                rfid_uid=rfid_uid,
-                spoolman_id=int(spoolman_id),
-                success=False,
-                message=str(exc),
+        try:
+            from ..extensions import db
+            db.session.add(
+                SpoolmanSyncLog(
+                    rfid_uid=rfid_uid,
+                    spoolman_id=int(spoolman_id),
+                    success=False,
+                    message=str(exc),
+                )
             )
-        )
-        db.session.commit()
-        log_event(
-            "ERROR",
-            "spool_sync_failed",
-            spoolman_id=spoolman_id,
-            rfid_uid=rfid_uid,
-            error=str(exc),
-        )
-        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Sync failed: {exc}</div>", 400
+            db.session.commit()
+        except:
+            pass
+        log_event("ERROR", "spool_sync_failed", spoolman_id=spoolman_id, rfid_uid=rfid_uid, error=str(exc))
+        
+        # Simplify error string for the user
+        err_msg = str(exc)
+        if "400" in err_msg or "Bad Request" in err_msg:
+             err_msg = "Invalid input or Spoolman rejected request."
+        elif "WinError 10061" in err_msg:
+             err_msg = "Could not connect to Spoolman."
+             
+        return f"<div class='font-bold text-[#E72A2E] text-center p-2 border border-[#E72A2E] rounded'>Failed: {err_msg}</div>", 200
 
 
 @filament_bp.post("/spoolman/action")
@@ -90,26 +101,40 @@ def spoolman_action():
     action = (request.form.get("action") or "").strip().lower()
     spool_id = _to_int(request.form.get("spool_id"))
     if spool_id is None:
-        return "<div class='text-[#E72A2E] text-sm'>Spool ID missing.</div>", 400
+        return "<div class='text-[#E72A2E] text-sm p-3 border border-[#E72A2E] rounded'>Spool ID missing.</div>", 200
 
     try:
         if action == "reweigh":
             weight = _to_float(request.form.get("weight"))
+            empty_weight = _to_float(request.form.get("empty_weight"))
             if weight is None:
                 current = build_context(include_spools=False)
                 weight = current["stability"]["stable_weight"] or current["weight_grams"] or 0.0
-            payload = {"id": spool_id, "remaining_weight": weight}
+            if empty_weight is None:
+                empty_weight = 0.0
+            remaining_weight = max(0.0, weight - empty_weight)
+            payload = {"id": spool_id, "remaining_weight": remaining_weight}
             _spoolman_request(f"/api/v1/spool/{spool_id}", method="PATCH", payload=payload)
-            message = f"Spool {spool_id} re-weighed to {round(weight, 1)}g"
+            message = f"Spool {spool_id} re-weighed to {round(remaining_weight, 1)}g (Measured: {round(weight, 1)}g)"
         elif action == "mark_used":
             payload = {"id": spool_id, "remaining_weight": 0}
             _spoolman_request(f"/api/v1/spool/{spool_id}", method="PATCH", payload=payload)
             message = f"Spool {spool_id} marked used"
+        elif action == "archive":
+            payload = {"id": spool_id, "archived": True}
+            _spoolman_request(f"/api/v1/spool/{spool_id}", method="PATCH", payload=payload)
+            message = f"Spool {spool_id} archived"
+        elif action == "unlink":
+            import json
+            # Set to empty JSON string to effectively clear the RFID without breaking the schema
+            payload = {"id": spool_id, "extra": {"rfid_uid": json.dumps("")}}
+            _spoolman_request(f"/api/v1/spool/{spool_id}", method="PATCH", payload=payload)
+            message = f"RFID unlinked from Spool {spool_id}"
         elif action == "remove":
             _spoolman_request(f"/api/v1/spool/{spool_id}", method="DELETE")
             message = f"Spool {spool_id} removed"
         else:
-            return "<div class='text-[#E72A2E] text-sm'>Unknown action.</div>", 400
+            return "<div class='text-[#E72A2E] text-sm p-3 border border-[#E72A2E] rounded'>Unknown action.</div>", 200
 
         log_event("INFO", "spoolman_action", action=action, spool_id=spool_id)
         return render_template(
@@ -133,14 +158,15 @@ def spoolman_add_filament():
     remaining_weight = _to_float(request.form.get("remaining_weight"))
 
     if filament_id is None or not rfid_uid:
-        return "<div class='text-[#E72A2E] text-sm'>Filament selection and RFID UID are required.</div>", 400
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Filament selection and RFID UID are required.</div>", 200
     if remaining_weight is None:
         remaining_weight = 0.0
 
+    import json
     payload = {
         "filament_id": filament_id,
         "remaining_weight": remaining_weight,
-        "extra": {"rfid_uid": rfid_uid},
+        "extra": {"rfid_uid": json.dumps(rfid_uid)},
     }
 
     try:
@@ -154,7 +180,7 @@ def spoolman_add_filament():
         )
         return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>New filament spool created and linked to RFID.</div>"
     except Exception as exc:
-        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Failed to create spool: {exc}</div>", 400
+        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Failed to create spool: {exc}</div>", 200
 
 
 @filament_bp.get("/wizard/modal")
@@ -200,7 +226,7 @@ def wizard_step(step_name):
             context["wizard_message"] = message
             context["wizard_error"] = not success
             if not success:
-                return render_template("partials/wizard_clear_scan.html", **context), 400
+                return render_template("partials/wizard_clear_scan.html", **context), 200
             return render_template("partials/wizard_add_spool.html", **context)
         return render_template("partials/wizard_clear_scan.html", **context)
 
@@ -226,12 +252,28 @@ def wizard_accept():
     spool_id = _to_int(request.form.get("spoolman_id"))
     rfid_uid = (request.form.get("rfid_uid") or "").strip()
     weight = _to_float(request.form.get("weight"))
-    if spool_id is None or not rfid_uid:
-        return "<div class='text-[#E72A2E] text-sm'>Spool ID and RFID UID are required.</div>", 400
+    if spool_id is None:
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Spool ID is required.</div>", 200
+    if not rfid_uid:
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>RFID UID is missing.</div>", 200
     if weight is None:
         weight = 0.0
 
-    payload = {"id": int(spool_id), "remaining_weight": weight, "extra": {"rfid_uid": rfid_uid}}
+    empty_weight_val = 0.0
+    try:
+        spool_data = _spoolman_request(f"/api/v1/spool/{int(spool_id)}")
+        empty_weight_val = spool_data.get("spool_weight")
+        if empty_weight_val is None:
+            filament = spool_data.get("filament", {})
+            empty_weight_val = getattr(filament, "get", lambda k,d: d)("spool_weight", 0)
+        empty_weight_val = empty_weight_val or 0.0
+    except Exception:
+        empty_weight_val = 0.0
+
+    remaining = max(0.0, weight - empty_weight_val)
+
+    import json
+    payload = {"id": int(spool_id), "remaining_weight": remaining, "extra": {"rfid_uid": json.dumps(rfid_uid)}}
     try:
         log_event(
             "DEBUG",
@@ -248,12 +290,12 @@ def wizard_accept():
                 rfid_uid=rfid_uid,
                 spoolman_id=int(spool_id),
                 success=True,
-                message=f"Wizard synced with remaining weight {weight}",
+                message=f"Wizard synced with remaining weight {remaining}",
             )
         )
         db.session.commit()
-        log_event("INFO", "spool_sync", spoolman_id=spool_id, rfid_uid=rfid_uid, weight=weight)
-        return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Wizard complete: spool updated in Spoolman.</div>"
+        log_event("INFO", "spool_sync", spoolman_id=spool_id, rfid_uid=rfid_uid, weight=remaining)
+        return f"<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Wizard complete: spool updated. Measured: {weight}g (Net: {remaining}g)</div>"
     except Exception as exc:
         try:
             from ..extensions import db
@@ -276,7 +318,7 @@ def wizard_accept():
             rfid_uid=rfid_uid,
             error=str(exc),
         )
-        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Wizard sync failed: {exc}</div>", 400
+        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Wizard sync failed: {exc}</div>", 200
 
 
 __all__ = ["filament_bp"]

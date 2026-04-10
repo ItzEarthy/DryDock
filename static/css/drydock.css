@@ -1,78 +1,78 @@
-/* DryDock Theme - variables + components
-   Dark mode is the default (defined on :root).
-   Light mode overrides apply when an element has [data-theme="light"].
+/* DryDock Theme - variables + components */
 
-   Design system:
-   - Brand colors
-   - Dark mode mapped to :root
-   - Light mode mapped to [data-theme="light"]
-   - Typography variables
-*/
-
-/* Core brand colors */
 :root {
+  /* Brand colors */
   --color-navy: #05203A;
+  --color-navy-dark: #031424;
   --color-red: #E0282E;
+  --color-red-dark: #B81D22;
   --color-green: #20904E;
+  --color-green-dark: #166E3A;
   --color-sand: #DFBF88;
-  --color-grey: #B0B3B8;
 
   /* DARK MODE (DEFAULT) */
-  --bg-primary: #0B1120;
+  --bg-primary: #0F172A;
   --bg-surface: #1E293B;
+  --bg-surface-hover: #334155;
   --text-primary: #F8FAFC;
   --text-muted: #94A3B8;
   --border-color: #334155;
+  --border-light: rgba(255, 255, 255, 0.1);
 
   /* Typography */
   --font-ui: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Spacing / geometry */
+  /* Modifiers */
   --radius-sm: 6px;
   --radius-md: 10px;
-  --shadow-subtle: 0 6px 18px rgba(2,6,23,0.45);
-  --shadow-soft: 0 4px 10px rgba(2,6,23,0.28);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-md: 0 6px 16px rgba(0,0,0,0.3);
 
-  /* Legacy / compatibility aliases used by templates */
+  /* Legacy / Template Support */
   --accent: #0f6a57;
   --accent-2: #1b9aaa;
   --danger: var(--color-red);
   --ok: var(--color-green);
-  --edge: rgba(132, 148, 158, 0.35);
-  --chart-grid: rgba(132, 148, 158, 0.25);
+  --edge: var(--border-color);
+  --chart-grid: rgba(255, 255, 255, 0.1);
   --bg: var(--bg-primary);
-  --bg-soft: color-mix(in srgb, var(--bg-primary) 88%, var(--bg-surface));
+  --bg-soft: var(--bg-surface);
   --card: var(--bg-surface);
   --text: var(--text-primary);
   --muted: var(--text-muted);
 }
 
-/* LIGHT MODE overrides */
 [data-theme="light"] {
-  --bg-primary: #F8FAFC;
+  --bg-primary: #F4F4F5;
   --bg-surface: #FFFFFF;
-  --text-primary: #0F172A;
-  --text-muted: #64748B;
-  --border-color: #E2E8F0;
+  --bg-surface-hover: #E4E4E7;
+  --text-primary: #09090B;
+  --text-muted: #71717A;
+  --border-color: #D4D4D8;
+  --border-light: rgba(0, 0, 0, 0.05);
+  
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-md: 0 6px 16px rgba(0,0,0,0.08);
 
-  /* Legacy aliases for light theme */
-  --accent: #0f6a57;
-  --accent-2: #1b9aaa;
-  --danger: var(--color-red);
-  --ok: var(--color-green);
-  --edge: rgba(88, 113, 137, 0.28);
-  --chart-grid: rgba(88, 113, 137, 0.2);
+  --edge: rgba(0, 0, 0, 0.1);
+  --chart-grid: rgba(0, 0, 0, 0.05);
   --bg: var(--bg-primary);
-  --bg-soft: color-mix(in srgb, var(--bg-primary) 88%, var(--bg-surface));
+  --bg-soft: var(--bg-surface);
   --card: var(--bg-surface);
   --text: var(--text-primary);
   --muted: var(--text-muted);
 }
 
 /* Base reset and layout */
-* { box-sizing: border-box; }
-html, body, #app { height: 100%; }
+* { 
+  box-sizing: border-box; 
+}
+
+html, body, #app { 
+  height: 100%; 
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -81,45 +81,40 @@ body {
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  line-height: 1.35;
-  -webkit-tap-highlight-color: transparent;
+  line-height: 1.5;
 }
 
 /* Utility helpers */
 .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
 .rounded { border-radius: var(--radius-md); }
-.shadow-subtle { box-shadow: var(--shadow-subtle); }
-.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-subtle { box-shadow: var(--shadow-sm); }
+.shadow-soft { box-shadow: var(--shadow-md); }
 
-/* Cards / Surfaces */
+/* Cards */
 .card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  padding: 1rem;
-  border-radius: calc(var(--radius-md) + 2px);
-  box-shadow: 0 6px 18px rgba(2,6,23,0.35);
-  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(2,6,23,0.38); }
+.card:hover { 
+  transform: translateY(-2px); 
+  box-shadow: var(--shadow-md); 
+}
 .card--flush { padding: 0; }
-.card__title { font-weight: 700; margin: 0 0 0.5rem 0; }
-.card__body { margin: 0; }
+.card__title { font-weight: 600; margin: 0 0 0.75rem 0; }
 
-/* Telemetry data / monospaced numeric display */
-.telemetry-data,
-.mono-text {
+/* Typography */
+.mono-text, .telemetry-data {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  -moz-font-feature-settings: "tnum" 1;
-  -webkit-font-feature-settings: "tnum" 1;
-  font-feature-settings: "tnum" 1;
-  letter-spacing: 0.2px;
 }
 
-/* Headings */
 h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
-.small-muted { color: var(--text-muted); font-size: 0.9rem; }
+.small-muted { color: var(--text-muted); font-size: 0.875rem; }
 
 /* Buttons */
 .btn {
@@ -127,153 +122,115 @@ h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.55rem 0.95rem;
-  min-height: 40px;
-  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
-  font-weight: 700;
-  font-size: 0.95rem;
-  line-height: 1;
-  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, opacity 120ms ease;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
 }
-.btn:focus { outline: 3px solid color-mix(in srgb, var(--color-navy) 18%, transparent); outline-offset: 2px; }
-.btn:active { transform: translateY(1px); }
-.btn[disabled], .btn.disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btn:focus { outline: 2px solid var(--color-navy); outline-offset: 2px; }
+.btn:active { transform: scale(0.98); }
+.btn[disabled], .btn.disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Primary button uses navy brand */
-.btn-primary {
+.btn-primary, .btn-blue {
   background-color: var(--color-navy);
   color: #fff;
-  border-color: color-mix(in srgb, var(--color-navy) 90%, black 10%);
-  box-shadow: 0 8px 20px rgba(5,32,58,0.28);
 }
-.btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.btn-primary:hover, .btn-blue:hover { background-color: var(--color-navy-dark); }
 
-/* Alias for templates using .btn-blue */
-.btn-blue { background-color: var(--color-navy); color: #fff; border-color: color-mix(in srgb, var(--color-navy) 90%, black 10%); box-shadow: 0 8px 20px rgba(5,32,58,0.28); }
-.btn-blue:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.btn-success { background-color: var(--color-green); color: #fff; }
+.btn-success:hover { background-color: var(--color-green-dark); }
 
-/* Success / Danger utility buttons */
-.btn-success {
-  background-color: var(--color-green);
-  color: #062810;
-  border-color: color-mix(in srgb, var(--color-green) 84%, black 12%);
-}
-.btn-success:hover { filter: brightness(1.04); transform: translateY(-1px); }
-.btn-danger {
-  background-color: var(--color-red);
-  color: #fff;
-  border-color: color-mix(in srgb, var(--color-red) 84%, black 12%);
-}
-.btn-danger:hover { filter: brightness(1.04); transform: translateY(-1px); }
+.btn-danger { background-color: var(--color-red); color: #fff; }
+.btn-danger:hover { background-color: var(--color-red-dark); }
 
-.btn-ghost {
-  background: transparent;
-  border-color: var(--border-color);
-}
+.btn-ghost { border-color: transparent; }
+.btn-ghost:hover { background: var(--bg-surface-hover); }
 
 .btn-outline {
-  background: transparent;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+}
+.btn-outline:hover { background: var(--bg-surface-hover); }
+
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+.btn-full, .btn.w-full { width: 100%; }
+.btn-icon { padding: 0.5rem; }
+.btn-gray {
+  background: var(--bg-surface-hover);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
 }
-.btn-outline:hover { background: color-mix(in srgb, var(--bg-surface) 6%, transparent); }
+.btn-gray:hover { background: var(--border-color); }
 
-/* Small button variants */
-.btn-sm { padding: 0.2rem 0.5rem; font-size: 0.85rem; border-radius: 8px; min-height: 32px; }
-
-/* full-width helper for buttons (where templates didn't use utility) */
-.btn-full, .btn.w-full { width: 100%; }
-
-/* icon button */
-.btn-icon { padding: 0.4rem; min-width: 40px; justify-content: center; }
-
-/* Badges / status indicators */
+/* Badges & Dots */
 .badge {
-  display: inline-flex; align-items: center; gap: 0.45rem;
-  padding: 0.18rem 0.6rem; border-radius: 999px; font-size: 0.8rem;
-  background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
-  border: 1px solid var(--border-color); color: var(--text-primary);
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--border-color); 
+  color: var(--text-primary);
 }
 
-.status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 3px 8px rgba(2,6,23,0.28); }
-.status-online { background: var(--color-green); color: var(--color-green); }
-.status-offline { background: var(--color-red); color: var(--color-red); }
-.status-warning { background: var(--color-sand); color: var(--color-sand); }
+.status-dot, .dot { 
+  width: 8px; height: 8px; 
+  border-radius: 50%; 
+  display: inline-block; 
+}
+.status-online, .dot-g { background: var(--color-green); box-shadow: 0 0 6px var(--color-green); }
+.status-offline, .dot-r { background: var(--color-red); box-shadow: 0 0 6px var(--color-red); }
+.status-warning { background: var(--color-sand); box-shadow: 0 0 6px var(--color-sand); }
 
-/* Legacy small dot utilities used in templates */
-.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.dot-g { background: var(--color-green); box-shadow: 0 0 8px var(--color-green); }
-.dot-r { background: var(--color-red); box-shadow: 0 0 8px var(--color-red); }
-
-/* More expressive status badges */
-.badge--online { background: color-mix(in srgb, var(--color-green) 8%, var(--bg-surface)); border-color: color-mix(in srgb, var(--color-green) 22%, transparent); color: var(--text-primary); }
-.badge--offline { background: color-mix(in srgb, var(--color-red) 8%, var(--bg-surface)); border-color: color-mix(in srgb, var(--color-red) 22%, transparent); }
-.badge--warning { background: color-mix(in srgb, var(--color-sand) 10%, var(--bg-surface)); border-color: color-mix(in srgb, var(--color-sand) 22%, transparent); color: var(--text-primary); }
+.badge--online { background: rgba(32, 144, 78, 0.15); color: var(--color-green); border-color: rgba(32, 144, 78, 0.3); }
+.badge--offline { background: rgba(224, 40, 46, 0.15); color: var(--color-red); border-color: rgba(224, 40, 46, 0.3); }
+.badge--warning { background: rgba(223, 191, 136, 0.15); color: var(--color-sand); border-color: rgba(223, 191, 136, 0.3); }
 
 /* Forms */
-.input, textarea, select {
-  width: 100%; padding: 0.56rem 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);
-  background: color-mix(in srgb, var(--bg-surface) 92%, transparent); color: var(--text-primary);
-}
-.input:focus, textarea:focus, select:focus { box-shadow: 0 6px 18px rgba(2,6,23,0.12); border-color: color-mix(in srgb, var(--color-navy) 26%, var(--border-color)); outline: none; }
-
-/* Backward-compatible input class used across templates */
-.input-dark { width: 100%; padding: 0.56rem 0.75rem; border-radius: 8px; border: 1px solid var(--edge); background: color-mix(in srgb, var(--bg-surface) 90%, transparent); color: var(--text-primary); }
-.input-dark:focus { box-shadow: 0 6px 18px rgba(2,6,23,0.12); border-color: color-mix(in srgb, var(--color-navy) 26%, var(--border-color)); outline: none; }
-
-/* Gray/neutral button used in several templates */
-.btn-gray {
-  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+.input, .input-dark, textarea, select {
+  width: 100%; 
+  padding: 0.6rem 0.8rem; 
+  border-radius: var(--radius-sm); 
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary); 
   color: var(--text-primary);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 28%, var(--border-color));
-  padding: 0.5rem 0.9rem;
-  border-radius: 8px;
-  font-weight: 700;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.btn-gray:hover { filter: brightness(1.03); }
+.input:focus, .input-dark:focus, textarea:focus, select:focus { 
+  border-color: var(--color-navy); 
+  outline: none; 
+  box-shadow: 0 0 0 2px rgba(5, 32, 58, 0.2); 
+}
 
 /* Tables */
 .table { width: 100%; border-collapse: collapse; }
-.table th, .table td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color); }
-.table thead th { font-weight: 700; }
+.table th, .table td { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border-color); }
+.table th { font-weight: 600; color: var(--text-muted); }
 
-/* Responsive helpers */
+/* Layout Utilities */
 .row { display: flex; gap: 1rem; flex-wrap: wrap; }
-.col { flex: 1 1 240px; }
+.col { flex: 1 1 250px; }
 
-/* Tiny helpers for legibility */
-.kv { display: flex; gap: 0.6rem; align-items: baseline; }
-.kv .k { color: var(--text-muted); font-size: 0.9rem; }
-.kv .v { font-weight: 700; }
+/* Helpers */
+.kv { display: flex; gap: 0.5rem; align-items: baseline; }
+.kv .k { color: var(--text-muted); font-size: 0.875rem; }
+.kv .v { font-weight: 600; }
 
-/* Accessibility-ish reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .card, .btn { transition: none !important; }
-}
-
-/* End of stylesheet */
-
-/* Utility classes for compatibility with existing templates */
-.border-edge { border-color: var(--edge) !important; }
-.bg-accent-gradient { background: linear-gradient(130deg, var(--accent), var(--accent-2)) !important; }
-.bg-accent-soft { background: color-mix(in srgb, var(--accent) 14%, transparent) !important; }
+.border-edge { border-color: var(--border-color) !important; }
+.bg-accent-gradient { background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important; }
+.bg-accent-soft { background: rgba(15, 106, 87, 0.15) !important; }
 .text-danger { color: var(--danger) !important; }
 .text-ok { color: var(--ok) !important; }
-.border-danger-mix { border-color: color-mix(in srgb, var(--danger) 65%, var(--edge)) !important; }
-.bg-accent-linear { background: linear-gradient(90deg, var(--accent), var(--accent-2)) !important; }
-.progress-track { background: color-mix(in srgb, var(--bg-surface) 78%, transparent); }
-.progress-fill { height: 8px; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); display: block; width: var(--progress, 0%); }
+.progress-track { background: var(--bg-surface-hover); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 8px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: var(--progress, 0%); }
 
-/* Advanced / Debug grouping
-  Elements with the `.advanced` class are hidden by default for general users.
-  Toggling `body.show-advanced` will reveal them. This keeps the primary UI uncluttered.
-*/
 .advanced { display: none; }
 body.show-advanced .advanced { display: block; }
-
-/* Compact helper footnotes used for decluttering text-heavy UI */
-.muted-compact { font-size: 0.85rem; color: var(--muted); }
+.muted-compact { font-size: 0.8rem; color: var(--text-muted); }

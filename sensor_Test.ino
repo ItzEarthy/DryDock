@@ -43,6 +43,7 @@ Adafruit_NAU7802* nau;
 
 unsigned long lastSensorRead = 0;
 unsigned long lastPostMs = 0;
+float lastPostedWeight = 0.0;
 
 bool rfidFound = false;
 bool am1Found = false;
@@ -269,10 +270,3 @@ void loop() {
     }
   }
 }
-'''
-
-    return (
-        template.replace("__WIFI_SSID__", _escape_cpp_string(ssid))
-        .replace("__WIFI_PASSWORD__", _escape_cpp_string(password))
-        .replace("__SERVER_URL__", _escape_cpp_string(server_url))
-    )
