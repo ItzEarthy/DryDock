@@ -2,66 +2,42 @@
 
 <div class="space-y-5">
     {% if calibration_message %}
-    <div class="p-3 rounded border text-sm {% if calibration_error %}border-red-500 text-red-400{% else %}border-green-500 text-green-400{% endif %}">
+    <div
+        class="p-3 rounded border text-sm {% if calibration_error %}border-red-500 text-red-400{% else %}border-green-500 text-green-400{% endif %}">
         {{ calibration_message }}
     </div>
     {% endif %}
 
-    <div class="p-3 rounded border text-sm" style="border-color: var(--edge); background: color-mix(in srgb, var(--accent) 10%, transparent);">
+    <div class="p-3 rounded border text-sm border-edge bg-accent-soft">
         <div class="font-semibold mb-1">Reminder Status</div>
-        <div class="soft-text">Last calibration: {{ app_settings.last_calibration_at.strftime('%Y-%m-%d %H:%M') if app_settings.last_calibration_at else "Never" }}</div>
+        <div class="soft-text">Last calibration: {{ app_settings.last_calibration_at.strftime('%Y-%m-%d %H:%M') if
+            app_settings.last_calibration_at else "Never" }}</div>
         <div class="soft-text">Reminder interval: every {{ app_settings.calibration_reminder_days }} day(s)</div>
-        <div class="mt-1 font-semibold" style="color: {% if calibration_due %}var(--danger){% else %}var(--ok){% endif %};">
+        <div class="mt-1 font-semibold {{ 'text-danger' if calibration_due else 'text-ok' }}">
             {% if calibration_due %}Calibration is due.{% else %}Calibration is up to date.{% endif %}
         </div>
     </div>
 
-    <div class="p-4 border rounded" style="border-color: var(--edge);">
+    <div class="p-4 border rounded border-edge">
         <p class="text-sm font-bold mb-1">1. Tare Scale</p>
         <p class="text-xs soft-text mb-3">Remove all weight and run a tare using the latest sensor sample.</p>
-        {% if current_user and current_user.role == 'admin' %}
-        <button hx-post="/calibration/tare" hx-target="#calibration-card" class="btn-gray w-full uppercase">Zero Scale</button>
-        {% else %}
-        <div class="text-xs soft-text">Admin permission required.</div>
-        {% endif %}
-        <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Offset:</span><span>{{ "%.3f"|format(cal_settings.tare_offset) }}</span></div>
+        <button hx-post="/calibration/tare" hx-target="#calibration-card" class="btn-gray w-full uppercase">Zero
+            Scale</button>
+        <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Offset:</span><span>{{
+                "%.3f"|format(cal_settings.tare_offset) }}</span></div>
     </div>
 
-    <div class="p-4 border rounded" style="border-color: var(--edge);">
+    <div class="p-4 border rounded border-edge">
         <p class="text-sm font-bold mb-1">2. Quick Single-Point Multiplier</p>
         <p class="text-xs soft-text mb-3">Place a known weight and set multiplier immediately.</p>
-        {% if current_user and current_user.role == 'admin' %}
         <form hx-post="/calibration/multiplier" hx-target="#calibration-card" class="flex gap-2">
-            <input type="number" step="any" name="known_weight" placeholder="Known grams" class="input-dark flex-1" required>
+            <input type="number" step="any" name="known_weight" placeholder="Known grams" class="input-dark flex-1"
+                required>
             <button type="submit" class="btn-blue uppercase">Set</button>
         </form>
-        {% else %}
-        <div class="text-xs soft-text">Admin permission required.</div>
-        {% endif %}
-        <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Multiplier:</span><span>{{ "%.8f"|format(cal_settings.calibration_multiplier) }}</span></div>
+        <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Multiplier:</span><span>{{
+                "%.8f"|format(cal_settings.calibration_multiplier) }}</span></div>
     </div>
 
-    <div class="p-4 border rounded space-y-3" style="border-color: var(--edge);">
-        <p class="text-sm font-bold">3. Guided Sampling (10-20 readings)</p>
-        <p class="text-xs soft-text">This mode captures repeated samples to average out noise before calculating the multiplier.</p>
-
-        {% if current_user and current_user.role == 'admin' %}
-        <form hx-post="/calibration/samples/start" hx-target="#calibration-card" class="flex gap-2">
-            <input type="number" step="any" name="known_weight" value="{{ calibration_known_weight if calibration_known_weight else '' }}" placeholder="Known grams" class="input-dark flex-1" required>
-            <button type="submit" class="btn-outline uppercase text-sm">Start</button>
-        </form>
-
-        <div class="text-xs soft-text">Samples captured: <span class="mono">{{ calibration_samples_count }}</span> / 20</div>
-        <div class="w-full h-2 rounded bg-black/20 overflow-hidden">
-            <div class="h-full" style="width: {{ (calibration_samples_count * 5) if calibration_samples_count <= 20 else 100 }}%; background: linear-gradient(90deg, var(--accent), var(--accent-2));"></div>
-        </div>
-
-        <div class="flex gap-2">
-            <button hx-post="/calibration/samples/add" hx-target="#calibration-card" class="btn-gray uppercase text-sm flex-1">Capture Sample</button>
-            <button hx-post="/calibration/samples/finish" hx-target="#calibration-card" class="btn-blue uppercase text-sm flex-1">Finalize</button>
-        </div>
-        {% else %}
-        <div class="text-xs soft-text">Admin permission required.</div>
-        {% endif %}
-    </div>
+    <!-- Guided sampling removed per design update -->
 </div>

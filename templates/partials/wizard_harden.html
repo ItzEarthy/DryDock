@@ -1,13 +1,13 @@
 <div class="space-y-4">
-    <div class="p-3 border rounded" style="border-color: var(--edge);">
+    <div class="p-3 border rounded border-edge">
         <div class="font-semibold mb-1">Step 3: Harden Weight</div>
         <p class="text-sm soft-text">DryDock samples EMA weight and waits for stability before allowing confirmation.</p>
     </div>
 
-    <div id="wizard-harden-status" hx-get="/wizard/step/harden_status" hx-trigger="load, every 2s" hx-swap="innerHTML"></div>
+    <div id="wizard-harden-status" hx-get="/filaments/wizard/step/harden_status" hx-trigger="load, every 2s" hx-swap="innerHTML"></div>
 
     <div class="flex gap-2">
-        <button class="btn-outline flex-1 uppercase" hx-get="/wizard/step/add_spool" hx-target="#wizard-body" hx-swap="innerHTML">Back</button>
+        <button class="btn-outline flex-1 uppercase" hx-get="/filaments/wizard/step/add_spool" hx-target="#wizard-body" hx-swap="innerHTML">Back</button>
         <button class="btn-outline flex-1 uppercase" onclick="closeModal()">Cancel</button>
     </div>
 </div>

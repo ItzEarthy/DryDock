@@ -5,6 +5,18 @@
     </div>
     {% endif %}
 
+    <div class="flex gap-2 items-center">
+        <input aria-label="Search spools" id="spool-search" placeholder="Search spools, material, vendor or ID" class="input-dark flex-1" />
+        <select id="spool-sort" class="input-dark" style="max-width:220px; margin-left:0.5rem;">
+            <option value="default">Sort: Default</option>
+            <option value="material-asc">Material A→Z</option>
+            <option value="remaining-desc">Remaining ↓</option>
+            <option value="remaining-asc">Remaining ↑</option>
+        </select>
+        <button id="spool-clear" class="btn-outline btn-sm" title="Clear">Clear</button>
+    </div>
+
+    <div id="spool-list" class="space-y-3 mt-2">
     {% if spoolman_spools %}
         {% for spool in spoolman_spools %}
             {% set spool_id = spool.id if spool.id is defined else (spool.spool_id if spool.spool_id is defined else '') %}
@@ -13,39 +25,179 @@
             {% set material_name = filament.material if filament and filament.material is defined else (filament.material_name if filament and filament.material_name is defined else 'Unknown') %}
             {% set vendor_name = filament.vendor.name if filament and filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament and filament.vendor is defined else 'Unknown') %}
             {% set remaining = spool.remaining_weight if spool.remaining_weight is defined else (spool.weight if spool.weight is defined else 0) %}
+            {% set total = filament.weight if filament is defined and filament and filament.weight is defined else (spool.weight if spool.weight is defined else 0) %}
+            {% set empty_weight = spool.spool_weight if spool.spool_weight is defined and spool.spool_weight is not none else (filament.spool_weight if filament is defined and filament and filament.spool_weight is defined and filament.spool_weight is not none else 0) %}
+            {% set measured = (remaining if remaining is not none else 0) + empty_weight %}
 
-            <div class="p-3 rounded border space-y-2" style="border-color: var(--edge);">
-                <div class="flex justify-between items-center gap-2">
+            {% set color_hex = filament.color_hex if filament and filament.color_hex is defined and filament.color_hex else None %}
+            {% set location = spool.location if spool.location is defined and spool.location else None %}
+            {% set lot_nr = spool.lot_nr if spool.lot_nr is defined and spool.lot_nr else None %}
+            {% set extruder_temp = filament.settings_extruder_temp if filament and filament.settings_extruder_temp is defined and filament.settings_extruder_temp else None %}
+            {% set bed_temp = filament.settings_bed_temp if filament and filament.settings_bed_temp is defined and filament.settings_bed_temp else None %}
+            
+            {% set spool_extra = spool.extra if spool.extra is defined and spool.extra else {} %}
+            {% set rfid_uid = spool_extra.get('rfid_uid', spool_extra.get('rfid', spool.rfid_uid if spool.rfid_uid is defined else ''))|string|replace('"', '') %}
+
+            <div class="p-3 rounded border space-y-2 border-edge spool-item" data-material="{{ (material_name|lower) }}" data-remaining="{{ remaining }}" data-search="{{ (filament_name ~ ' ' ~ material_name ~ ' ' ~ vendor_name ~ ' ' ~ spool_id)|lower }}">
+                <div class="flex justify-between items-start gap-2">
                     <div>
-                        <div class="font-semibold">{{ filament_name }}</div>
-                        <div class="text-xs soft-text">{{ material_name }} · {{ vendor_name }}</div>
+                        <div class="font-semibold flex items-center gap-2">
+                            {% if color_hex %}
+                            <div class="w-3 h-3 rounded-full border border-edge shrink-0" style="background-color: #{{ color_hex|replace('#', '') }};"></div>
+                            {% endif %}
+                            {{ filament_name }}
+                        </div>
+                        <div class="text-xs soft-text mt-0.5 flex flex-wrap items-center gap-1.5">
+                            <span>{{ vendor_name }} · {{ material_name }}</span>
+                            {% if location %}
+                            <span class="flex items-center text-[var(--color-sand)]" title="Location">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 text-[#35AB57]"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                {{ location }}
+                            </span>
+                            {% endif %}
+                            {% if lot_nr %}
+                            <span class="flex items-center text-[var(--text-primary)]" title="Lot Number">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 text-[var(--color-sand)]"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                {{ lot_nr }}
+                            </span>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="text-xs mono">ID {{ spool_id }}</div>
+                    <div class="text-xs mono text-right">
+                        <div>ID {{ spool_id }}</div>
+                    </div>
                 </div>
 
-                <div class="text-xs soft-text">Remaining: <span class="mono">{{ "%.1f"|format(remaining if remaining is not none else 0) }} g</span></div>
+                {% if rfid_uid %}
+                <div class="bg-[var(--surface-hover)] border border-edge rounded px-2 py-1.5 text-xs font-mono text-[#35AB57] flex items-center mt-2 break-all" title="RFID UID">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5 shrink-0"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    {{ rfid_uid }}
+                </div>
+                {% endif %}
 
-                <div class="grid grid-cols-3 gap-2">
-                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs soft-text pt-1">
+                    {% if extruder_temp or bed_temp %}
+                    <div class="flex items-center gap-3" title="Temperatures">
+                        <span class="flex items-center" title="Nozzle Temperature">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 text-orange-500"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>    
+                            {{ extruder_temp ~ '°C' if extruder_temp else '--' }}
+                        </span>
+                        <span class="flex items-center" title="Bed Temperature">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 text-blue-400"><rect x="2" y="7" width="20" height="10" rx="2" ry="2"/><line x1="2" y1="17" x2="22" y2="17"/><line x1="6" y1="21" x2="6" y2="17"/><line x1="18" y1="21" x2="18" y2="17"/></svg>
+                            {{ bed_temp ~ '°C' if bed_temp else '--' }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    <div title="Empty Spool Weight">
+                        Empty: <span class="mono">{{ "%.0f"|format(empty_weight) }}g</span>
+                    </div>
+                </div>
+
+                <div class="bg-[var(--surface-hover)] rounded p-2 mt-2">
+                    <div class="flex items-center justify-between text-xs soft-text">
+                        <div>Meas: <span class="mono text-[var(--text-primary)] font-medium">{{ "%.1f"|format(measured) }} g</span></div>
+                        <div>Rem: <span class="mono text-[var(--text-primary)]">{{ "%.1f"|format(remaining if remaining is not none else 0) }} g</span></div>
+                        <div>Tot: <span class="mono">{{ "%.1f"|format(total if total is not none else 0) }} g</span></div>
+                    </div>
+                </div>
+
+                {% if total > 0 %}
+                <div class="w-full bg-surface-hover rounded-full h-1.5 mt-1 border border-edge overflow-hidden">
+                    <div class="bg-accent-gradient h-full rounded-full" style="width: {{ [100, (remaining / total * 100)]|min }}%"></div>
+                </div>
+                {% endif %}
+
+                <div class="grid grid-cols-2 gap-2 pt-1 mt-2">
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="reweigh">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <input type="hidden" name="weight" value="{{ weight_grams if weight_grams is not none else remaining }}">
-                        <button class="btn-outline text-xs w-full">Re-weigh</button>
+                        <input type="hidden" name="weight" value="{{ weight_grams if weight_grams is not none else measured }}">
+                        <input type="hidden" name="empty_weight" value="{{ empty_weight }}">
+                        <button class="btn-outline text-xs w-full" hx-confirm="Update Spoolman with the current live weight?" title="Save live scale weight to Spoolman (subtracts empty spool automatically)">Re-weigh</button>
                     </form>
-                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="mark_used">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <button class="btn-outline text-xs w-full">Mark Used</button>
+                        <button class="btn-outline text-xs w-full" hx-confirm="Set remaining filament weight to 0g?" title="Set remaining filament to 0g">Mark Used</button>
                     </form>
-                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                        <input type="hidden" name="action" value="unlink">
+                        <input type="hidden" name="spool_id" value="{{ spool_id }}">
+                        <button class="btn-outline text-xs w-full" hx-confirm="Unlink the RFID tag from this spool?" title="Unlink RFID card from this spool">Unlink Tag</button>
+                    </form>
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                        <input type="hidden" name="action" value="archive">
+                        <input type="hidden" name="spool_id" value="{{ spool_id }}">
+                        <button class="btn-outline text-xs w-full text-[var(--color-sand)] border-[var(--color-sand)] hover:bg-[var(--color-sand)] hover:text-[#0b0e14]" hx-confirm="Archive this spool? It will be removed from the active view." title="Archive in Spoolman">Archive</button>
+                    </form>
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML" class="col-span-2">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <button class="btn-outline text-xs w-full" style="color: var(--danger); border-color: color-mix(in srgb, var(--danger) 65%, var(--edge));">Remove</button>
+                        <button class="btn-outline text-xs w-full text-[#E72A2E] border-[#E72A2E] hover:bg-[#E72A2E] hover:text-white flex items-center justify-center" hx-confirm="Are you sure you want to permanently delete this spool from Spoolman? Consider 'Archive' instead." title="Delete from Spoolman permanently">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            Permanently Delete
+                        </button>
                     </form>
                 </div>
             </div>
         {% endfor %}
     {% else %}
-    <div class="text-sm soft-text border rounded p-3" style="border-color: var(--edge);">No active spools returned from Spoolman.</div>
+    <div class="text-sm soft-text border rounded p-3 border-edge">No active spools returned from Spoolman.</div>
     {% endif %}
+    </div>
+
+    <script>
+    (function initSpoolList(root){
+        const container = root.querySelector('#spool-list');
+        if (!container) return;
+
+        const searchEl = root.querySelector('#spool-search');
+        const sortEl = root.querySelector('#spool-sort');
+        const clearBtn = root.querySelector('#spool-clear');
+
+        // Capture previous state from the main page if swapped
+        const globalSearch = document.getElementById('spool-search');
+        const globalSort = document.getElementById('spool-sort');
+        if (searchEl && globalSearch && searchEl !== globalSearch) {
+            searchEl.value = globalSearch.value;
+        }
+        if (sortEl && globalSort && sortEl !== globalSort) {
+            sortEl.value = globalSort.value;
+        }
+
+        function filterAndSort() {
+            const q = (searchEl?.value || '').trim().toLowerCase();
+            const items = Array.from(container.querySelectorAll('.spool-item'));
+
+            // filter
+            items.forEach(item => {
+                const text = item.getAttribute('data-search') || '';
+                item.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+            });
+
+            // sort
+            const mode = sortEl?.value || 'default';
+            let toSort = items.filter(i => i.style.display !== 'none');
+            if (mode === 'material-asc') {
+                toSort.sort((a,b)=> (a.dataset.material || '').localeCompare(b.dataset.material || ''));
+            } else if (mode === 'remaining-desc') {
+                toSort.sort((a,b)=> Number(b.dataset.remaining) - Number(a.dataset.remaining));
+            } else if (mode === 'remaining-asc') {
+                toSort.sort((a,b)=> Number(a.dataset.remaining) - Number(b.dataset.remaining));
+            }
+
+            // append in sorted order (non-sorted keeps server order)
+            if (mode !== 'default') {
+                toSort.forEach(node => container.appendChild(node));
+            }
+        }
+
+        if (searchEl) searchEl.addEventListener('input', filterAndSort);
+        if (sortEl) sortEl.addEventListener('change', filterAndSort);
+        if (clearBtn) clearBtn.addEventListener('click', ()=>{ if (searchEl) searchEl.value=''; if (sortEl) sortEl.value='default'; filterAndSort(); });
+
+        // run once on load
+        filterAndSort();
+    })(document.currentScript ? document.currentScript.parentElement : document);
+    </script>
 </div>

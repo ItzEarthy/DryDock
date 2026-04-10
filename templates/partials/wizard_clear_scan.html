@@ -1,5 +1,5 @@
 <div class="space-y-4">
-    <div class="p-3 border rounded" style="border-color: var(--edge);">
+    <div class="p-3 border rounded border-edge">
         <div class="font-semibold mb-1">Step 1: Clear Scale and Scan RFID</div>
         <p class="text-sm soft-text">Remove spool from scale, tare, and scan RFID.</p>
     </div>
@@ -9,18 +9,18 @@
     {% endif %}
 
     <div class="grid grid-cols-2 gap-3 text-sm">
-        <div class="p-2 border rounded" style="border-color: var(--edge);">
+        <div class="p-2 border rounded border-edge">
             <div class="soft-text text-xs">Weight</div>
             <div class="mono" data-live-weight>-- g</div>
         </div>
-        <div class="p-2 border rounded" style="border-color: var(--edge);">
+        <div class="p-2 border rounded border-edge">
             <div class="soft-text text-xs">RFID:</div>
             <div class="mono" data-live-rfid>{{ latest_uid or 'Awaiting scan' }}</div>
         </div>
     </div>
 
     <div class="flex gap-2">
-        <button class="btn-gray flex-1 uppercase" hx-post="/wizard/step/clear_scan" hx-target="#wizard-body" hx-swap="innerHTML">Tare Scale</button>
-        <button class="btn-outline flex-1 uppercase" hx-get="/wizard/step/add_spool" hx-target="#wizard-body" hx-swap="innerHTML">Next</button>
+        <button class="btn-gray flex-1 uppercase" hx-post="/filaments/wizard/step/clear_scan" hx-target="#wizard-body" hx-swap="innerHTML">Tare Scale</button>
+        <button class="btn-outline flex-1 uppercase" hx-get="/filaments/wizard/step/add_spool" hx-target="#wizard-body" hx-swap="innerHTML">Next</button>
     </div>
 </div>

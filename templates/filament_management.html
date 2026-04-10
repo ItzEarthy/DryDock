@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">Filament Management</h1>
+        <div class="space-x-2">
+            {% if spoolman_connected %}
+                <button class="btn-outline" hx-get="/filaments/partials/filament_options" hx-target="#filament-options" hx-swap="innerHTML">Refresh Filaments</button>
+                <button class="btn-blue" hx-get="/filaments/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Open Wizard</button>
+            {% else %}
+                <button class="btn-outline" disabled>Refresh Filaments</button>
+                <button class="btn-gray" disabled>Spoolman Offline</button>
+            {% endif %}
+        </div>
+        <div id="filament-options" class="hidden"></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        <!-- Main Column: Active Spools (spanning 7 columns on md displays) -->
+        <div class="md:col-span-8 flex flex-col gap-6">
+            {% if spoolman_connected %}
+            <div class="card flex flex-col" style="max-height: 80vh;">
+                <h2 class="text-lg font-semibold mb-2">Active Spools</h2>
+                <div class="overflow-y-auto flex-1" aria-label="Spool list scroll container">
+                    <div id="spool-list-wrapper" hx-get="/filaments/partials/spool_list" hx-trigger="load" hx-swap="innerHTML"></div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <h2 class="text-lg font-semibold mb-2">Active Spools</h2>
+                <div class="soft-text">Spoolman is not connected. Configure Spoolman in settings to see active spools.</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar Column: RFID/Sync Workflow (spanning 5 columns on md displays) -->
+        <div class="md:col-span-4 flex flex-col gap-6">
+            {% if spoolman_connected and sensor_connected %}
+            <div id="rfid-spool-card" class="card hidden">
+                <h2 class="text-lg font-semibold mb-2">Scanned Spool</h2>
+                <div id="rfid-spool-result" class="mb-3"></div>
+                <form id="rfid-spool-form" hx-post="/filaments/spoolman/sync" hx-target="#rfid-spool-result" hx-swap="innerHTML">
+                    <input type="hidden" id="empty-weight-input" name="empty_weight" value="0" />
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs soft-text">Spool (select)</label>
+                            <select id="spool-select" name="spoolman_id" class="input mt-1 overflow-hidden overflow-ellipsis break-words">
+                                <option value="">-- Choose Spool --</option>
+                                {% for spool in spoolman_spools %}
+                                    {% set sid = (spool.get('id') if spool is mapping else spool.id) %}
+                                    {% set filament = (spool.get('filament') if spool is mapping else getattr(spool, 'filament', None)) %}
+                                    
+                                    {% set spool_target_name = (spool.get('name') if spool is mapping else getattr(spool, 'name', '')) %}
+                                    {% set filament_target_name = (filament.get('name') if filament and filament is mapping else getattr(filament, 'name', '')) %}
+                                    {% set title = spool_target_name or filament_target_name or 'Unknown Spool' %}
+                                    
+                                    {% set spool_extra = (spool.get('extra') if spool is mapping else getattr(spool, 'extra', None)) %}
+                                    {% set spool_weight = (spool.get('remaining_weight') if spool is mapping else getattr(spool, 'remaining_weight', 0)) %}
+                                    {% set empty_weight_val = (spool.get('spool_weight') if spool is mapping and spool.get('spool_weight') is not none else getattr(spool, 'spool_weight', None)) %}
+                                    {% if empty_weight_val is none and filament %}
+                                        {% set empty_weight_val = (filament.get('spool_weight') if filament is mapping and filament.get('spool_weight') is not none else getattr(filament, 'spool_weight', 0)) %}
+                                    {% endif %}
+                                    {% set empty_weight_val = empty_weight_val or 0 %}
+                                    {% set measured_weight_val = (spool_weight or 0) + empty_weight_val %}
+                                    
+                                    {% set spool_rfid = '' %}
+                                    {% if spool_extra is mapping %}
+                                        {% set spool_rfid = (spool_extra.get('rfid_uid') or spool_extra.get('rfid') or '') %}
+                                    {% endif %}
+                                    {% if not spool_rfid %}
+                                        {% set spool_rfid = ((spool.get('rfid_uid') if spool is mapping else getattr(spool, 'rfid_uid', None)) or '') %}
+                                    {% endif %}
+                                    <option value="{{ sid }}" data-rfid="{{ spool_rfid|default('') }}" data-weight="{{ measured_weight_val }}" data-empty-weight="{{ empty_weight_val }}">[ID {{ sid }}] {{ title|string|truncate(40, True) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                    <div>
+                        <label class="text-xs soft-text">RFID Tag</label>
+                        <input id="rfid-input" name="rfid_uid" class="input input-dark mono-text mt-1" placeholder="Awaiting scan" />
+                    </div>
+
+                    <div>
+                        <label class="text-xs soft-text">Weight (g)</label>
+                        <div class="flex gap-2 mt-1">
+                            <input id="weight-input" name="weight" class="input input-dark telemetry-data flex-1" placeholder="0.00" />
+                            <button id="grab-weight-btn" type="button" class="btn-outline btn-sm">Grab Weight</button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2">
+                        <button id="rfid-cancel" type="button" class="btn-outline btn-sm">Cancel</button>
+                        <button id="rfid-accept" type="submit" class="btn-blue btn-sm" hx-confirm="Are you sure you want to link this RFID tag and update the spool's weight?">Accept</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div id="rfid-cta" class="card text-center flex flex-col items-center justify-center py-10">
+            <div class="text-3xl mb-4 text-[#a9b8c7]">🔍</div>
+            <h3 class="text-lg font-bold mb-2">Scan RFID</h3>
+            <div class="soft-text text-sm">Tap an RFID-tagged spool to the reader to attach or update a spool.</div>
+        </div>
+        {% else %}
+        <div class="card">
+            <h2 class="text-lg font-semibold mb-2">RFID / Sync</h2>
+            {% if not sensor_connected %}
+                <div class="soft-text">ESP32 telemetry is currently offline — RFID and live weight unavailable.</div>
+            {% elif not spoolman_connected %}
+                <div class="soft-text">Spoolman is not connected — sync and spool selection are disabled.</div>
+            {% else %}
+                <div class="soft-text">RFID and spool sync unavailable.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+<script>
+(function(){
+    const card = document.getElementById('rfid-spool-card');
+    const cta = document.getElementById('rfid-cta');
+    const rfidInput = document.getElementById('rfid-input');
+    const weightInput = document.getElementById('weight-input');
+    const grabBtn = document.getElementById('grab-weight-btn');
+    const cancelBtn = document.getElementById('rfid-cancel');
+    const spoolSelect = document.getElementById('spool-select');
+    
+    let lastProcessedUid = '';
+
+    function showCard() { card.classList.remove('hidden'); cta.classList.add('hidden'); }
+    function hideCard() { 
+        card.classList.add('hidden'); 
+        cta.classList.remove('hidden'); 
+        rfidInput.value=''; 
+        weightInput.value=''; 
+        spoolSelect.selectedIndex = 0; 
+        lastProcessedUid = '';
+    }
+
+    // Listen for a custom event `rfid-scanned` with detail { uid }
+    document.addEventListener('rfid-scanned', function(e){
+        const uid = e.detail && e.detail.uid ? String(e.detail.uid) : '';
+        if (!uid) return;
+        showCard();
+        handleScannedUid(uid);
+    });
+
+    // Fallback: poll live snapshot when card visible to update RFID fields ONLY
+    // We no longer overwrite the weight dynamically unless explicitly requested.
+    let liveTimer = null;
+    function startLiveTimer(){ if (liveTimer) return; liveTimer = setInterval(refreshLive, 1000); }
+    function stopLiveTimer(){ if (liveTimer){ clearInterval(liveTimer); liveTimer = null; } }
+
+    function refreshLive(){
+        if (!card || card.classList.contains('hidden')) { stopLiveTimer(); return; }
+        fetch('/api/live_snapshot').then(r=>r.ok? r.json():null).then(data=>{
+            if (!data) return;
+            if (data.rfid_uid) {
+                showCard();
+                handleScannedUid(String(data.rfid_uid));
+            }
+        }).catch(()=>{});
+    }
+
+    function handleScannedUid(uid) {
+        uid = uid.replace(/^"|"$/g, '').trim();
+        // Only run the spool-selection changes if a NEW, different tag is scanned.
+        if (uid === lastProcessedUid) return;
+        lastProcessedUid = uid;
+        rfidInput.value = uid;
+        selectSpoolForRfid(uid);
+    }
+
+    // Grab live weight on demand
+    grabBtn.addEventListener('click', async function(){
+        try{
+            const res = await fetch('/api/live_snapshot');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.weight_grams !== undefined && data.weight_grams !== null) {
+                weightInput.value = Number(data.weight_grams).toFixed(2);
+            }
+        }catch(e){}
+    });
+
+    cancelBtn.addEventListener('click', function(){ hideCard(); });
+
+    // Stop live polling when we execute a sync, because HTMX handles it
+    document.getElementById('rfid-spool-form').addEventListener('htmx:configRequest', function(){ 
+        stopLiveTimer(); 
+    });
+
+    function updateWeightFromSpool() {
+        if (!spoolSelect || spoolSelect.selectedIndex <= 0) {
+            document.getElementById('empty-weight-input').value = '0';
+            return;
+        }
+        const opt = spoolSelect.options[spoolSelect.selectedIndex];
+        const w = opt.dataset.weight;
+        const ew = opt.dataset.emptyWeight || 0;
+        document.getElementById('empty-weight-input').value = ew;
+        
+        if (w !== undefined) {
+             weightInput.value = Number(w).toFixed(2);
+        }
+    }
+
+    // When the user changes the dropdown manually, grab that spool's weight from dataset
+    if (spoolSelect) {
+        spoolSelect.addEventListener('change', updateWeightFromSpool);
+    }
+
+    function selectSpoolForRfid(uid){
+        if (!uid) return;
+        if (!spoolSelect) return;
+        let matched = false;
+        
+        // Strip any quotes that json.dumps might have added from the passed uid or dataset
+        const cleanUid = uid.replace(/^"|"$/g, '').trim();
+
+        for (const opt of Array.from(spoolSelect.options)){
+            let optRfid = (opt.dataset && opt.dataset.rfid) ? String(opt.dataset.rfid).trim() : '';
+            optRfid = optRfid.replace(/^"|"$/g, ''); // Fix json encoded tags
+            
+            if (optRfid && (optRfid === cleanUid || cleanUid.includes(optRfid))){
+                spoolSelect.value = opt.value;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched){
+            spoolSelect.selectedIndex = 0;
+            document.getElementById('empty-weight-input').value = '0';
+            weightInput.value = '';
+        } else {
+            updateWeightFromSpool();
+        }
+    }
+
+    // Start polling when modal is visible or a scan occurs
+    // Resume live polling and reset tag so they can scan again once HTMX is done swapping
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target && e.detail.target.id === 'rfid-spool-result') {
+            lastProcessedUid = null;
+            rfidInput.value = '';
+            weightInput.value = '';
+            spoolSelect.selectedIndex = 0;
+            document.getElementById('empty-weight-input').value = '0';
+            startLiveTimer();
+        }
+    });
+
+    const obs = new MutationObserver(()=>{ if (!card.classList.contains('hidden')) startLiveTimer(); else stopLiveTimer(); });
+    if (card) obs.observe(card, { attributes: true, attributeFilter: ['class'] });
+
+    // If server provided a latest UID on render, trigger the same UI flow
+    try{
+        const serverUid = "{{ latest_uid|default('') }}";
+        const sensorOnline = {{ 'true' if sensor_connected else 'false' }};
+        if (sensorOnline && serverUid && serverUid.trim() !== ''){
+            const evt = new CustomEvent('rfid-scanned', { detail: { uid: serverUid } });
+            document.dispatchEvent(evt);
+        }
+    }catch(e){}
+})();
+</script>
+{% endblock %}

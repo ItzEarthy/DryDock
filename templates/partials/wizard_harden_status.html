@@ -3,8 +3,8 @@
         <span class="soft-text uppercase">Hardening progress</span>
         <span class="mono">{{ stability.progress }}%</span>
     </div>
-    <div class="w-full h-3 rounded bg-black/20 overflow-hidden">
-        <div class="h-full" style="width: {{ stability.progress }}%; background: linear-gradient(90deg, var(--accent), var(--accent-2));"></div>
+    <div class="w-full h-3 rounded progress-track overflow-hidden">
+        <div class="h-full progress-fill" data-progress="{{ stability.progress }}%"></div>
     </div>
     <div class="text-sm">
         <span class="soft-text">Stable weight:</span>
@@ -12,7 +12,7 @@
     </div>
 
     {% if stability.stable %}
-    <button class="btn-blue w-full uppercase" hx-get="/wizard/step/confirm" hx-target="#wizard-body" hx-swap="innerHTML">Continue to Confirm</button>
+    <button class="btn-blue w-full uppercase" hx-get="/filaments/wizard/step/confirm" hx-target="#wizard-body" hx-swap="innerHTML">Continue to Confirm</button>
     {% else %}
     <button class="btn-outline w-full uppercase" disabled>Waiting for Stability...</button>
     {% endif %}
