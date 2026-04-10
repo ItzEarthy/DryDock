@@ -1,0 +1,681 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime, timedelta
+from io import BytesIO
+from pathlib import Path
+from statistics import mean
+
+from flask import Blueprint, jsonify, render_template, request, send_file, session
+
+from ..extensions import db
+from ..models import (
+    AppSettings,
+    CalibrationSettings,
+    SensorLog,
+    SpoolmanSyncLog,
+)
+from ..utils.database import create_database_backup, get_or_create
+from ..utils.firmware import generate_esp32_firmware
+from ..utils.logging import APP_START_TIME, configure_structured_logging, format_uptime, log_event
+from ..utils.scale import AUTO_ZERO_GRAMS, _to_float, _to_int, calculate_weight_grams, compute_weight_stability
+from ..utils.spoolman import (
+    _spoolman_request,
+    check_spoolman,
+    fetch_active_spools,
+    fetch_filament_options,
+)
+from .auth import admin_required, get_current_user
+
+
+dashboard_bp = Blueprint("dashboard", __name__)
+
+
+def _sensor_status():
+    latest_log = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+    status = {"ok": False, "msg": "No Data"}
+    if latest_log:
+        sensor_age = (datetime.utcnow() - latest_log.timestamp).total_seconds()
+        status = {
+            "ok": sensor_age < 180,
+            "msg": "Online" if sensor_age < 180 else "Offline",
+        }
+    return status
+
+
+def _perform_software_tare():
+    latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+    if not latest or latest.raw_adc is None:
+        return False, "No sensor data available to tare."
+
+    calibration = get_or_create(CalibrationSettings)
+    calibration.tare_offset = latest.raw_adc
+    db.session.commit()
+    log_event("INFO", "scale_tare", tare_offset=calibration.tare_offset)
+    return True, "Scale tared using latest telemetry sample."
+
+
+def build_context(include_spools=True):
+    latest_log = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+    calibration = get_or_create(CalibrationSettings)
+    settings = get_or_create(AppSettings)
+
+    uid_log = (
+        SensorLog.query.filter(SensorLog.rfid_uid.isnot(None), SensorLog.rfid_uid != "")
+        .order_by(SensorLog.timestamp.desc())
+        .first()
+    )
+
+    recent_logs = SensorLog.query.order_by(SensorLog.timestamp.desc()).limit(180).all()
+    recent_logs.reverse()
+    stability = compute_weight_stability(recent_logs, calibration, settings)
+
+    hum_delta = None
+    desiccant_healthy = None
+    weight_grams = None
+    if latest_log:
+        if latest_log.hum_1 is not None and latest_log.hum_2 is not None:
+            hum_delta = latest_log.hum_2 - latest_log.hum_1
+            desiccant_healthy = hum_delta >= settings.humidity_threshold
+        weight_grams = calculate_weight_grams(latest_log.raw_adc, latest_log.temp_1, calibration, settings)
+
+    spoolman_ok, spoolman_msg = (False, "Unknown")
+    from ..utils.database import check_database_status
+
+    db_ok, db_msg = check_database_status()
+    uptime = format_uptime(datetime.utcnow() - APP_START_TIME)
+
+    last_cal = settings.last_calibration_at
+    calibration_due = True
+    if last_cal:
+        calibration_due = datetime.utcnow() - last_cal >= timedelta(
+            days=max(settings.calibration_reminder_days, 1)
+        )
+
+    samples = session.get("calibration_samples", [])
+    known_weight = session.get("calibration_known_weight")
+
+    spools = fetch_active_spools() if include_spools else []
+    filaments = fetch_filament_options() if include_spools else []
+
+    return {
+        "log": latest_log,
+        "cal_settings": calibration,
+        "app_settings": settings,
+        "latest_uid": uid_log.rfid_uid if uid_log else "",
+        "hum_delta": hum_delta,
+        "weight_grams": weight_grams,
+        "weight_kg": (weight_grams / 1000.0) if weight_grams is not None else None,
+        "desiccant_healthy": desiccant_healthy,
+        "stability": stability,
+        "sensor_status": _sensor_status(),
+        "spoolman_status": {"ok": spoolman_ok, "msg": spoolman_msg},
+        "db_status": {"ok": db_ok, "msg": db_msg},
+        "uptime": uptime,
+        "spoolman_spools": spools,
+        "filament_options": filaments,
+        "calibration_due": calibration_due,
+        "calibration_samples_count": len(samples),
+        "calibration_known_weight": known_weight,
+        "active_theme": settings.theme if settings.theme in {"dark", "light"} else "dark",
+        "permission_matrix": [
+            {"feature": "Dashboard & telemetry", "admin": True, "user": True},
+            {"feature": "Run spool workflows", "admin": True, "user": True},
+            {"feature": "Save settings", "admin": True, "user": False},
+            {"feature": "Calibration + tare", "admin": True, "user": False},
+            {"feature": "Import/export config", "admin": True, "user": False},
+            {"feature": "Backups", "admin": True, "user": False},
+            {"feature": "Firmware builder", "admin": True, "user": False},
+        ],
+    }
+
+
+@dashboard_bp.route("/")
+def index():
+    return render_template("index.html", **build_context(include_spools=False))
+
+
+@dashboard_bp.route("/settings_page")
+def settings_page():
+    return render_template("settings.html", **build_context(include_spools=False))
+
+
+@dashboard_bp.route("/partials/<section>")
+def render_partial(section):
+    allowed = {"latest", "calibration", "spool_list", "filament_options"}
+    if section not in allowed:
+        return "Not found", 404
+    include_spools = section == "spool_list"
+    include_filaments = section in {"filament_options"}
+    ctx = build_context(include_spools=include_spools)
+    if include_filaments:
+        ctx["filament_options"] = fetch_filament_options()
+    return render_template(f"partials/{section}.html", **ctx)
+
+
+@dashboard_bp.post("/settings")
+@admin_required
+def save_settings():
+    settings = get_or_create(AppSettings)
+
+    settings.spoolman_url = (request.form.get("spoolman_url") or "").strip()
+    settings.webhook_url = (request.form.get("webhook_url") or "").strip()
+
+    humidity_threshold = _to_float(request.form.get("humidity_threshold"))
+    if humidity_threshold is not None:
+        settings.humidity_threshold = humidity_threshold
+
+    log_retention_days = _to_int(request.form.get("log_retention_days"))
+    if log_retention_days is not None and log_retention_days >= 1:
+        settings.log_retention_days = log_retention_days
+
+    temp_comp_factor = _to_float(request.form.get("temp_compensation_factor"))
+    if temp_comp_factor is not None:
+        settings.temp_compensation_factor = temp_comp_factor
+
+    temp_reference = _to_float(request.form.get("temp_reference_c"))
+    if temp_reference is not None:
+        settings.temp_reference_c = temp_reference
+
+    calibration_reminder_days = _to_int(request.form.get("calibration_reminder_days"))
+    if calibration_reminder_days is not None and calibration_reminder_days >= 1:
+        settings.calibration_reminder_days = calibration_reminder_days
+
+    backup_interval = _to_int(request.form.get("backup_interval_hours"))
+    if backup_interval is not None and backup_interval >= 1:
+        settings.backup_interval_hours = backup_interval
+
+    backup_retention = _to_int(request.form.get("backup_retention_count"))
+    if backup_retention is not None and backup_retention >= 1:
+        settings.backup_retention_count = backup_retention
+
+    theme = (request.form.get("theme") or "dark").lower()
+    settings.theme = "light" if theme == "light" else "dark"
+
+    log_level = (request.form.get("log_level") or "INFO").upper()
+    settings.log_level = "DEBUG" if log_level == "DEBUG" else "INFO"
+
+    db.session.commit()
+    configure_structured_logging(settings.log_level)
+    log_event("INFO", "settings_updated", by_user=get_current_user().username)
+
+    return "<div class='p-3 bg-[#35AB57]/20 border border-[#35AB57] text-[#35AB57] rounded mt-4'>Settings saved successfully.</div>"
+
+
+@dashboard_bp.post("/settings/test_spoolman")
+def test_spoolman_connection():
+    url = (request.form.get("spoolman_url") or get_or_create(AppSettings).spoolman_url or "").strip()
+    ok, msg = check_spoolman(url)
+    if ok:
+        return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm mt-2'>Spoolman test successful.</div>"
+    return (
+        f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm mt-2'>Spoolman test failed: {msg}</div>",
+        400,
+    )
+
+
+@dashboard_bp.get("/settings/export")
+@admin_required
+def export_settings():
+    settings = get_or_create(AppSettings)
+    calibration = get_or_create(CalibrationSettings)
+
+    payload = {
+        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "app_settings": {
+            "spoolman_url": settings.spoolman_url,
+            "humidity_threshold": settings.humidity_threshold,
+            "log_retention_days": settings.log_retention_days,
+            "webhook_url": settings.webhook_url,
+            "theme": settings.theme,
+            "log_level": settings.log_level,
+            "temp_compensation_factor": settings.temp_compensation_factor,
+            "temp_reference_c": settings.temp_reference_c,
+            "calibration_reminder_days": settings.calibration_reminder_days,
+            "backup_interval_hours": settings.backup_interval_hours,
+            "backup_retention_count": settings.backup_retention_count,
+            "last_calibration_at": settings.last_calibration_at.isoformat() if settings.last_calibration_at else None,
+        },
+        "calibration": {
+            "tare_offset": calibration.tare_offset,
+            "calibration_multiplier": calibration.calibration_multiplier,
+        },
+    }
+
+    content = json.dumps(payload, indent=2).encode("utf-8")
+    return send_file(
+        BytesIO(content),
+        as_attachment=True,
+        download_name="drydock_config.json",
+        mimetype="application/json",
+    )
+
+
+@dashboard_bp.post("/settings/import")
+@admin_required
+def import_settings():
+    upload = request.files.get("config_file")
+    if not upload:
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Please upload a JSON file.</div>", 400
+
+    try:
+        payload = json.load(upload)
+    except Exception:
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Invalid JSON file.</div>", 400
+
+    settings_payload = payload.get("app_settings") or {}
+    calibration_payload = payload.get("calibration") or {}
+
+    settings = get_or_create(AppSettings)
+    calibration = get_or_create(CalibrationSettings)
+
+    allowed_settings = [
+        "spoolman_url",
+        "humidity_threshold",
+        "log_retention_days",
+        "webhook_url",
+        "theme",
+        "log_level",
+        "temp_compensation_factor",
+        "temp_reference_c",
+        "calibration_reminder_days",
+        "backup_interval_hours",
+        "backup_retention_count",
+    ]
+    for key in allowed_settings:
+        if key in settings_payload:
+            setattr(settings, key, settings_payload[key])
+
+    if "tare_offset" in calibration_payload:
+        calibration.tare_offset = _to_float(calibration_payload.get("tare_offset")) or calibration.tare_offset
+    if "calibration_multiplier" in calibration_payload:
+        calibration.calibration_multiplier = _to_float(calibration_payload.get("calibration_multiplier")) or calibration.calibration_multiplier
+
+    db.session.commit()
+    configure_structured_logging(settings.log_level)
+    log_event("INFO", "settings_imported", by_user=get_current_user().username)
+    return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Configuration imported.</div>"
+
+
+@dashboard_bp.post("/settings/backup")
+@admin_required
+def manual_backup():
+    success, message, backup_path = create_database_backup(reason="manual")
+    if success:
+        return f"<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Backup created: {backup_path.name}</div>"
+    return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Backup failed: {message}</div>", 500
+
+
+def render_calibration_card(message=None, is_error=False):
+    context = build_context(include_spools=False)
+    context["calibration_message"] = message
+    context["calibration_error"] = is_error
+    return render_template("partials/calibration.html", **context)
+
+
+@dashboard_bp.post("/calibration/tare")
+@admin_required
+def auto_tare():
+    success, message = _perform_software_tare()
+    if not success:
+        return render_calibration_card(message=message, is_error=True)
+    return render_calibration_card(message=message, is_error=False)
+
+
+@dashboard_bp.post("/calibration/multiplier")
+@admin_required
+def auto_calibrate_single():
+    known_weight = _to_float(request.form.get("known_weight"))
+    latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+    if not known_weight or not latest or latest.raw_adc is None:
+        return render_calibration_card(message="Invalid input or missing sensor data.", is_error=True)
+
+    calibration = get_or_create(CalibrationSettings)
+    diff = latest.raw_adc - calibration.tare_offset
+    if diff == 0:
+        return render_calibration_card(message="Scale unchanged since tare.", is_error=True)
+
+    calibration.calibration_multiplier = known_weight / diff
+    get_or_create(AppSettings).last_calibration_at = datetime.utcnow()
+    db.session.commit()
+    log_event(
+        "INFO",
+        "calibration_single_point",
+        known_weight=known_weight,
+        multiplier=calibration.calibration_multiplier,
+    )
+    return render_calibration_card(message="Calibration multiplier updated.", is_error=False)
+
+
+@dashboard_bp.post("/calibration/samples/start")
+@admin_required
+def start_calibration_samples():
+    known_weight = _to_float(request.form.get("known_weight"))
+    if not known_weight or known_weight <= 0:
+        return render_calibration_card(message="Enter a valid known weight.", is_error=True)
+
+    session["calibration_known_weight"] = known_weight
+    session["calibration_samples"] = []
+    session.modified = True
+    return render_calibration_card(message="Guided sampling started.", is_error=False)
+
+
+@dashboard_bp.post("/calibration/samples/add")
+@admin_required
+def add_calibration_sample():
+    samples = session.get("calibration_samples", [])
+    if len(samples) >= 20:
+        return render_calibration_card(message="Maximum sample count reached (20).", is_error=False)
+
+    latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
+    if not latest or latest.raw_adc is None:
+        return render_calibration_card(message="No sensor sample available.", is_error=True)
+
+    samples.append(latest.raw_adc)
+    session["calibration_samples"] = samples
+    session.modified = True
+    return render_calibration_card(message=f"Captured sample {len(samples)}.", is_error=False)
+
+
+@dashboard_bp.post("/calibration/samples/finish")
+@admin_required
+def finish_calibration_samples():
+    samples = session.get("calibration_samples", [])
+    known_weight = _to_float(session.get("calibration_known_weight"))
+
+    if known_weight is None or len(samples) < 10:
+        return render_calibration_card(message="Capture at least 10 samples first.", is_error=True)
+
+    calibration = get_or_create(CalibrationSettings)
+    average_raw = mean(samples)
+    diff = average_raw - calibration.tare_offset
+    if diff == 0:
+        return render_calibration_card(message="Sample set matches tare offset.", is_error=True)
+
+    calibration.calibration_multiplier = known_weight / diff
+    settings = get_or_create(AppSettings)
+    settings.last_calibration_at = datetime.utcnow()
+    db.session.commit()
+
+    session.pop("calibration_samples", None)
+    session.pop("calibration_known_weight", None)
+    session.modified = True
+
+    log_event(
+        "INFO",
+        "calibration_guided_complete",
+        known_weight=known_weight,
+        samples=len(samples),
+        avg_raw=average_raw,
+        multiplier=calibration.calibration_multiplier,
+    )
+    return render_calibration_card(message="Guided calibration complete.", is_error=False)
+
+
+@dashboard_bp.post("/spoolman/sync")
+def spoolman_sync():
+    spoolman_id = (request.form.get("spoolman_id") or "").strip()
+    rfid_uid = (request.form.get("rfid_uid") or "").strip()
+    weight = _to_float(request.form.get("weight"))
+
+    if not spoolman_id.isdigit() or not rfid_uid:
+        return "<div class='text-[#E72A2E] text-sm'>Invalid spool ID or RFID UID.</div>", 400
+    if weight is None:
+        weight = 0.0
+
+    payload = {"id": int(spoolman_id), "remaining_weight": weight, "extra": {"rfid_uid": rfid_uid}}
+    try:
+        _spoolman_request(f"/api/v1/spool/{int(spoolman_id)}", method="PATCH", payload=payload)
+        db.session.add(
+            SpoolmanSyncLog(
+                rfid_uid=rfid_uid,
+                spoolman_id=int(spoolman_id),
+                success=True,
+                message=f"Synced with remaining weight {weight}",
+            )
+        )
+        db.session.commit()
+        log_event("INFO", "spool_sync", spoolman_id=spoolman_id, rfid_uid=rfid_uid, weight=weight)
+        return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Synced successfully.</div>"
+    except Exception as exc:
+        db.session.add(
+            SpoolmanSyncLog(
+                rfid_uid=rfid_uid,
+                spoolman_id=int(spoolman_id),
+                success=False,
+                message=str(exc),
+            )
+        )
+        db.session.commit()
+        log_event(
+            "ERROR",
+            "spool_sync_failed",
+            spoolman_id=spoolman_id,
+            rfid_uid=rfid_uid,
+            error=str(exc),
+        )
+        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Sync failed: {exc}</div>", 400
+
+
+@dashboard_bp.post("/spoolman/action")
+def spoolman_action():
+    action = (request.form.get("action") or "").strip().lower()
+    spool_id = _to_int(request.form.get("spool_id"))
+    if spool_id is None:
+        return "<div class='text-[#E72A2E] text-sm'>Spool ID missing.</div>", 400
+
+    try:
+        if action == "reweigh":
+            weight = _to_float(request.form.get("weight"))
+            if weight is None:
+                current = build_context(include_spools=False)
+                weight = current["stability"]["stable_weight"] or current["weight_grams"] or 0.0
+            payload = {"id": spool_id, "remaining_weight": weight}
+            _spoolman_request(f"/api/v1/spool/{spool_id}", method="PATCH", payload=payload)
+            message = f"Spool {spool_id} re-weighed to {round(weight, 1)}g"
+        elif action == "mark_used":
+            payload = {"id": spool_id, "remaining_weight": 0}
+            _spoolman_request(f"/api/v1/spool/{spool_id}", method="PATCH", payload=payload)
+            message = f"Spool {spool_id} marked used"
+        elif action == "remove":
+            _spoolman_request(f"/api/v1/spool/{spool_id}", method="DELETE")
+            message = f"Spool {spool_id} removed"
+        else:
+            return "<div class='text-[#E72A2E] text-sm'>Unknown action.</div>", 400
+
+        log_event("INFO", "spoolman_action", action=action, spool_id=spool_id)
+        return render_template(
+            "partials/spool_list.html",
+            action_message=message,
+            **build_context(include_spools=True),
+        )
+    except Exception as exc:
+        return render_template(
+            "partials/spool_list.html",
+            action_message=f"Action failed: {exc}",
+            action_error=True,
+            **build_context(include_spools=True),
+        )
+
+
+@dashboard_bp.post("/spoolman/add_filament")
+def spoolman_add_filament():
+    filament_id = _to_int(request.form.get("filament_id"))
+    rfid_uid = (request.form.get("rfid_uid") or "").strip()
+    remaining_weight = _to_float(request.form.get("remaining_weight"))
+
+    if filament_id is None or not rfid_uid:
+        return "<div class='text-[#E72A2E] text-sm'>Filament selection and RFID UID are required.</div>", 400
+    if remaining_weight is None:
+        remaining_weight = 0.0
+
+    payload = {
+        "filament_id": filament_id,
+        "remaining_weight": remaining_weight,
+        "extra": {"rfid_uid": rfid_uid},
+    }
+
+    try:
+        _spoolman_request("/api/v1/spool", method="POST", payload=payload)
+        log_event(
+            "INFO",
+            "spool_added",
+            filament_id=filament_id,
+            rfid_uid=rfid_uid,
+            remaining_weight=remaining_weight,
+        )
+        return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>New filament spool created and linked to RFID.</div>"
+    except Exception as exc:
+        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Failed to create spool: {exc}</div>", 400
+
+
+@dashboard_bp.get("/wizard/modal")
+def wizard_modal():
+    return render_template("partials/filament_wizard.html", **build_context(include_spools=True))
+
+
+@dashboard_bp.route("/wizard/step/<step_name>", methods=["GET", "POST"])
+def wizard_step(step_name):
+    context = build_context(include_spools=True)
+
+    selected_spool_id = None
+    latest_uid = (context.get("latest_uid") or "").strip()
+    if latest_uid:
+        for spool in context.get("spoolman_spools", []):
+            spool_extra = spool.get("extra") if isinstance(spool, dict) else getattr(spool, "extra", None)
+            spool_rfid = None
+            if isinstance(spool_extra, dict):
+                spool_rfid = (spool_extra.get("rfid_uid") or spool_extra.get("rfid") or "").strip()
+            if not spool_rfid:
+                spool_rfid = (
+                    (spool.get("rfid_uid") if isinstance(spool, dict) else getattr(spool, "rfid_uid", None))
+                    or ""
+                )
+                spool_rfid = spool_rfid.strip() if spool_rfid else ""
+            if spool_rfid and spool_rfid == latest_uid:
+                spool_id_val = (
+                    (spool.get("id") if isinstance(spool, dict) else getattr(spool, "id", None))
+                    or (spool.get("spool_id") if isinstance(spool, dict) else getattr(spool, "spool_id", None))
+                )
+                try:
+                    selected_spool_id = str(int(spool_id_val))
+                except Exception:
+                    selected_spool_id = str(spool_id_val)
+                break
+    context["selected_spool_id"] = selected_spool_id
+
+    if step_name == "clear_scan":
+        if request.method == "POST":
+            success, message = _perform_software_tare()
+            context["wizard_message"] = message
+            context["wizard_error"] = not success
+            if not success:
+                return render_template("partials/wizard_clear_scan.html", **context), 400
+            return render_template("partials/wizard_add_spool.html", **context)
+        return render_template("partials/wizard_clear_scan.html", **context)
+
+    if step_name == "add_spool":
+        return render_template("partials/wizard_add_spool.html", **context)
+
+    if step_name == "harden" or step_name == "harden_status" or step_name == "confirm":
+        sw = request.args.get("selected_weight")
+        if sw:
+            try:
+                context["selected_weight"] = float(sw)
+            except Exception:
+                context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        else:
+            context["selected_weight"] = context["stability"]["stable_weight"] or context["weight_grams"] or 0
+        return render_template("partials/wizard_confirm.html", **context)
+
+    return "Unknown wizard step", 404
+
+
+@dashboard_bp.post("/wizard/step/accept")
+def wizard_accept():
+    spool_id = _to_int(request.form.get("spoolman_id"))
+    rfid_uid = (request.form.get("rfid_uid") or "").strip()
+    weight = _to_float(request.form.get("weight"))
+    if spool_id is None or not rfid_uid:
+        return "<div class='text-[#E72A2E] text-sm'>Spool ID and RFID UID are required.</div>", 400
+    if weight is None:
+        weight = 0.0
+
+    payload = {"id": int(spool_id), "remaining_weight": weight, "extra": {"rfid_uid": rfid_uid}}
+    try:
+        log_event(
+            "DEBUG",
+            "spool_sync_attempt",
+            payload=payload,
+            endpoint=f"/api/v1/spool/{int(spool_id)}",
+        )
+        result = _spoolman_request(
+            f"/api/v1/spool/{int(spool_id)}", method="PATCH", payload=payload
+        )
+        log_event("DEBUG", "spool_sync_response", response=result)
+        db.session.add(
+            SpoolmanSyncLog(
+                rfid_uid=rfid_uid,
+                spoolman_id=int(spool_id),
+                success=True,
+                message=f"Wizard synced with remaining weight {weight}",
+            )
+        )
+        db.session.commit()
+        log_event("INFO", "spool_sync", spoolman_id=spool_id, rfid_uid=rfid_uid, weight=weight)
+        return "<div class='p-3 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Wizard complete: spool updated in Spoolman.</div>"
+    except Exception as exc:
+        try:
+            db.session.add(
+                SpoolmanSyncLog(
+                    rfid_uid=rfid_uid,
+                    spoolman_id=int(spool_id) if spool_id is not None else None,
+                    success=False,
+                    message=str(exc),
+                )
+            )
+            db.session.commit()
+        except Exception:
+            pass
+        log_event(
+            "ERROR",
+            "spool_sync_failed",
+            spoolman_id=spool_id,
+            rfid_uid=rfid_uid,
+            error=str(exc),
+        )
+        return f"<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Wizard sync failed: {exc}</div>", 400
+
+
+@dashboard_bp.route("/build_firmware", methods=["POST"])
+@admin_required
+def build_firmware():
+    ssid = request.form.get("ssid", "")
+    password = request.form.get("password", "")
+    server_ip = request.form.get("pi_ip", "").strip()
+    server_port = request.form.get("pi_port", "5000").strip()
+    if not ssid or not password or not server_ip:
+        return "Missing SSID, password, or server IP", 400
+
+    server_url = f"http://{server_ip}:{server_port}/api/update"
+    firmware = generate_esp32_firmware(ssid, password, server_url)
+
+    buffer = BytesIO()
+    buffer.write(firmware.encode("utf-8"))
+    buffer.seek(0)
+
+    log_event(
+        "INFO",
+        "firmware_generated",
+        server_url=server_url,
+        generated_by=get_current_user().username,
+    )
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="DryDock.ino",
+        mimetype="text/plain",
+    )
+
+
+__all__ = ["dashboard_bp"]
