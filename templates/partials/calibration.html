@@ -39,30 +39,5 @@
                 "%.8f"|format(cal_settings.calibration_multiplier) }}</span></div>
     </div>
 
-    <div class="p-4 border rounded space-y-3 border-edge">
-        <p class="text-sm font-bold">3. Guided Sampling (10-20 readings)</p>
-        <p class="text-xs soft-text">This mode captures repeated samples to average out noise before calculating the
-            multiplier.</p>
-
-        <form hx-post="/calibration/samples/start" hx-target="#calibration-card" class="flex gap-2">
-            <input type="number" step="any" name="known_weight"
-                value="{{ calibration_known_weight if calibration_known_weight else '' }}" placeholder="Known grams"
-                class="input-dark flex-1" required>
-            <button type="submit" class="btn-outline uppercase text-sm">Start</button>
-        </form>
-
-        <div class="text-xs soft-text">Samples captured: <span class="mono">{{ calibration_samples_count }}</span> / 20
-        </div>
-        <div class="w-full h-2 rounded progress-track overflow-hidden">
-            <div class="h-full progress-fill" style="--progress: {{ (calibration_samples_count * 5) if calibration_samples_count <= 20 else 100 }}%;">
-            </div>
-        </div>
-
-        <div class="flex gap-2">
-            <button hx-post="/calibration/samples/add" hx-target="#calibration-card"
-                class="btn-gray uppercase text-sm flex-1">Capture Sample</button>
-            <button hx-post="/calibration/samples/finish" hx-target="#calibration-card"
-                class="btn-blue uppercase text-sm flex-1">Finalize</button>
-        </div>
-    </div>
+    <!-- Guided sampling removed per design update -->
 </div>
