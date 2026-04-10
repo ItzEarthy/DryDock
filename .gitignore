@@ -47,3 +47,4 @@ instance/drydock.db
 /instance
 /instance
 instance/drydock.db
+*.db
