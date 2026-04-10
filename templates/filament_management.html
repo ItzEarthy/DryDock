@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">Filament Management</h1>
+        <div class="space-x-2">
+            <button class="btn-outline" hx-get="/filaments/partials/filament_options" hx-target="#filament-options" hx-swap="innerHTML">Refresh Filaments</button>
+            <button class="btn-blue" hx-get="/filaments/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Open Wizard</button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6">
+        <div class="card">
+            <h2 class="text-lg font-semibold mb-2">Active Spools</h2>
+            <div class="max-h-96 overflow-auto" aria-label="Spool list scroll container">
+                <div id="spool-list-wrapper" hx-get="/filaments/partials/spool_list" hx-trigger="load" hx-swap="innerHTML"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -12,7 +12,7 @@
     </div>
 
     {% if stability.stable %}
-    <button class="btn-blue w-full uppercase" hx-get="/wizard/step/confirm" hx-target="#wizard-body" hx-swap="innerHTML">Continue to Confirm</button>
+    <button class="btn-blue w-full uppercase" hx-get="/filaments/wizard/step/confirm" hx-target="#wizard-body" hx-swap="innerHTML">Continue to Confirm</button>
     {% else %}
     <button class="btn-outline w-full uppercase" disabled>Waiting for Stability...</button>
     {% endif %}
