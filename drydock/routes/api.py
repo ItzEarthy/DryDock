@@ -8,7 +8,7 @@ from pathlib import Path
 from statistics import mean
 
 from flask import Blueprint, Response, current_app, jsonify, request, send_file
-from sqlalchemy import func, text
+from sqlalchemy import func, text, literal_column
 
 from ..extensions import db
 from ..models import AppSettings, CalibrationSettings, SensorLog
@@ -259,7 +259,7 @@ def get_history():
 
     bucket_seconds = _history_bucket_seconds(hours, aggregation)
     if bucket_seconds and aggregation in {"avg", "min", "max"}:
-        bucket_expr = text(
+        bucket_expr = literal_column(
             f"(CAST(strftime('%s', timestamp) AS INTEGER) / {int(bucket_seconds)}) * {int(bucket_seconds)}"
         )
 

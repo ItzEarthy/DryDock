@@ -267,3 +267,13 @@ h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
 .bg-accent-linear { background: linear-gradient(90deg, var(--accent), var(--accent-2)) !important; }
 .progress-track { background: color-mix(in srgb, var(--bg-surface) 78%, transparent); }
 .progress-fill { height: 8px; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); display: block; width: var(--progress, 0%); }
+
+/* Advanced / Debug grouping
+  Elements with the `.advanced` class are hidden by default for general users.
+  Toggling `body.show-advanced` will reveal them. This keeps the primary UI uncluttered.
+*/
+.advanced { display: none; }
+body.show-advanced .advanced { display: block; }
+
+/* Compact helper footnotes used for decluttering text-heavy UI */
+.muted-compact { font-size: 0.85rem; color: var(--muted); }
