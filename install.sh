@@ -46,7 +46,7 @@ echo ""
 # --- 2. SYSTEM DEPENDENCIES ---
 echo "Installing system dependencies..."
 sudo apt update
-sudo apt install -y python3-venv python3-pip curl git
+sudo apt install -y python3-venv python3-pip curl git build-essential
 
 # --- 3. ESP32 USB PERMISSIONS ---
 echo "Setting up USB permissions for flashing the ESP32..."
