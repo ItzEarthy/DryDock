@@ -31,7 +31,7 @@ if [[ "$ADD_MOONRAKER" =~ ^[Yy]$ ]]; then
 
 [update_manager drydock]
 type: git_repo
-path: $APP_DIR
+path: ~/DryDock
 origin: https://github.com/ItzEarthy/DryDock.git
 primary_branch: main
 is_system_service: False
