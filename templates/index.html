@@ -137,30 +137,7 @@
             </div>
         </div>
 
-        <div class="card space-y-3">
-            <div class="flex justify-between items-center mb-2 section-title">
-                <h2 class="text-xl font-bold">System Health</h2>
-                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-health">Collapse</button>
-            </div>
-            <div id="panel-health" class="space-y-3">
-                <div class="flex justify-between text-sm pb-2 mt-3">
-                    <span class="soft-text">DryDock ESP32</span>
-                    <span id="health-esp32" class="font-bold flex items-center gap-2"><span class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ sensor_status.msg }}</span>
-                </div>
-                <div class="flex justify-between text-sm pb-2">
-                    <span class="soft-text">Spoolman API</span>
-                    <span id="health-spoolman" class="font-bold flex items-center gap-2"><span class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ spoolman_status.msg }}</span>
-                </div>
-                <div class="flex justify-between text-sm pb-2">
-                    <span class="soft-text">Database</span>
-                    <span id="health-db" class="font-bold flex items-center gap-2"><span class="dot {% if db_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ db_status.msg }}</span>
-                </div>
-                <div class="flex justify-between text-sm pt-2 border-t border-edge">
-                    <span class="soft-text">Uptime</span>
-                    <span id="health-uptime" class="mono">{{ uptime }}</span>
-                </div>
-            </div>
-        </div>
+        <!-- System Health moved to Settings -->
     </div>
 </div>
 

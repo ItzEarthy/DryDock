@@ -101,6 +101,26 @@
 
     document.addEventListener("DOMContentLoaded", () => initializeCollapsibles(document));
     document.body.addEventListener("htmx:afterSwap", (evt) => initializeCollapsibles(evt.detail.target || document));
+
+    // Set CSS progress widths from data attributes to avoid inline visual styles.
+    function setProgressFromData(root = document) {
+        root.querySelectorAll('.progress-fill').forEach((el) => {
+            const dp = el.getAttribute('data-progress');
+            if (!dp) return;
+            // Accept either number or percent string.
+            const val = String(dp).trim();
+            if (val.endsWith('%')) {
+                el.style.setProperty('--progress', val);
+            } else if (!isNaN(Number(val))) {
+                el.style.setProperty('--progress', val + '%');
+            } else {
+                el.style.setProperty('--progress', val);
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => setProgressFromData(document));
+    document.body.addEventListener('htmx:afterSwap', (evt) => setProgressFromData(evt.detail.target || document));
     </script>
 </body>
 </html>

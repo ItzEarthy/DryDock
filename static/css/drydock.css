@@ -127,38 +127,48 @@ h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: 8px;
+  padding: 0.55rem 0.95rem;
+  min-height: 40px;
+  border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
-  font-weight: 600;
-  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, opacity 120ms ease;
 }
-.btn:focus { outline: 3px solid color-mix(in srgb, var(--color-navy) 16%, transparent); outline-offset: 2px; }
+.btn:focus { outline: 3px solid color-mix(in srgb, var(--color-navy) 18%, transparent); outline-offset: 2px; }
 .btn:active { transform: translateY(1px); }
+.btn[disabled], .btn.disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
 /* Primary button uses navy brand */
 .btn-primary {
   background-color: var(--color-navy);
   color: #fff;
-  border-color: color-mix(in srgb, var(--color-navy) 85%, black 15%);
-  box-shadow: 0 6px 14px rgba(5,32,58,0.36);
+  border-color: color-mix(in srgb, var(--color-navy) 90%, black 10%);
+  box-shadow: 0 8px 20px rgba(5,32,58,0.28);
 }
-.btn-primary:hover { filter: brightness(1.05); }
+.btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+
+/* Alias for templates using .btn-blue */
+.btn-blue { background-color: var(--color-navy); color: #fff; border-color: color-mix(in srgb, var(--color-navy) 90%, black 10%); box-shadow: 0 8px 20px rgba(5,32,58,0.28); }
+.btn-blue:hover { filter: brightness(1.06); transform: translateY(-1px); }
 
 /* Success / Danger utility buttons */
 .btn-success {
   background-color: var(--color-green);
-  color: #082812;
+  color: #062810;
   border-color: color-mix(in srgb, var(--color-green) 84%, black 12%);
 }
+.btn-success:hover { filter: brightness(1.04); transform: translateY(-1px); }
 .btn-danger {
   background-color: var(--color-red);
   color: #fff;
   border-color: color-mix(in srgb, var(--color-red) 84%, black 12%);
 }
+.btn-danger:hover { filter: brightness(1.04); transform: translateY(-1px); }
 
 .btn-ghost {
   background: transparent;
@@ -167,12 +177,19 @@ h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
 
 .btn-outline {
   background: transparent;
-  border: 1px solid var(--edge);
+  border: 1px solid var(--border-color);
   color: var(--text-primary);
 }
+.btn-outline:hover { background: color-mix(in srgb, var(--bg-surface) 6%, transparent); }
 
 /* Small button variants */
-.btn-sm { padding: 0.28rem 0.6rem; font-size: 0.9rem; border-radius: 6px; }
+.btn-sm { padding: 0.2rem 0.5rem; font-size: 0.85rem; border-radius: 8px; min-height: 32px; }
+
+/* full-width helper for buttons (where templates didn't use utility) */
+.btn-full, .btn.w-full { width: 100%; }
+
+/* icon button */
+.btn-icon { padding: 0.4rem; min-width: 40px; justify-content: center; }
 
 /* Badges / status indicators */
 .badge {
@@ -186,6 +203,11 @@ h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
 .status-online { background: var(--color-green); color: var(--color-green); }
 .status-offline { background: var(--color-red); color: var(--color-red); }
 .status-warning { background: var(--color-sand); color: var(--color-sand); }
+
+/* Legacy small dot utilities used in templates */
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot-g { background: var(--color-green); box-shadow: 0 0 8px var(--color-green); }
+.dot-r { background: var(--color-red); box-shadow: 0 0 8px var(--color-red); }
 
 /* More expressive status badges */
 .badge--online { background: color-mix(in srgb, var(--color-green) 8%, var(--bg-surface)); border-color: color-mix(in srgb, var(--color-green) 22%, transparent); color: var(--text-primary); }

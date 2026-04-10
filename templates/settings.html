@@ -137,5 +137,60 @@
             </div>
         </div>
     </div>
+
+        <div class="card space-y-3">
+            <div class="flex justify-between items-center mb-2 section-title">
+                <h2 class="text-xl font-bold">System Health</h2>
+                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-health">Collapse</button>
+            </div>
+            <div id="panel-health" class="space-y-3">
+                <div class="flex justify-between text-sm pb-2 mt-3">
+                    <span class="soft-text">DryDock ESP32</span>
+                    <span id="health-esp32" class="font-bold flex items-center gap-2"><span class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ sensor_status.msg }}</span>
+                </div>
+                <div class="flex justify-between text-sm pb-2">
+                    <span class="soft-text">Spoolman API</span>
+                    <span id="health-spoolman" class="font-bold flex items-center gap-2"><span class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ spoolman_status.msg }}</span>
+                </div>
+                <div class="flex justify-between text-sm pb-2">
+                    <span class="soft-text">Database</span>
+                    <span id="health-db" class="font-bold flex items-center gap-2"><span class="dot {% if db_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ db_status.msg }}</span>
+                </div>
+                <div class="flex justify-between text-sm pt-2 border-t border-edge">
+                    <span class="soft-text">Uptime</span>
+                    <span id="health-uptime" class="mono">{{ uptime }}</span>
+                </div>
+            </div>
+        </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function refreshHealthSettings() {
+    try {
+        const res = await fetch('/api/system/health');
+        if (!res.ok) return;
+        const data = await res.json();
+        const paint = (id, payload) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const dotClass = payload && payload.ok ? 'dot-g' : 'dot-r';
+            el.innerHTML = `<span class="dot ${dotClass}"></span>${payload && payload.msg ? payload.msg : 'Unknown'}`;
+        };
+        paint('health-esp32', data.esp32 || { ok: false, msg: 'Unknown' });
+        paint('health-spoolman', data.spoolman || { ok: false, msg: 'Unknown' });
+        paint('health-db', data.database || { ok: false, msg: 'Unknown' });
+        const upEl = document.getElementById('health-uptime');
+        if (upEl && data.uptime) upEl.textContent = data.uptime;
+    } catch (e) {
+        // ignore
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    refreshHealthSettings();
+    setInterval(refreshHealthSettings, 8000);
+});
+</script>
 {% endblock %}
