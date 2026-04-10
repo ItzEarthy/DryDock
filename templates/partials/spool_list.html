@@ -14,7 +14,7 @@
             {% set vendor_name = filament.vendor.name if filament and filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament and filament.vendor is defined else 'Unknown') %}
             {% set remaining = spool.remaining_weight if spool.remaining_weight is defined else (spool.weight if spool.weight is defined else 0) %}
 
-            <div class="p-3 rounded border space-y-2" style="border-color: var(--edge);">
+            <div class="p-3 rounded border space-y-2 border-edge">
                 <div class="flex justify-between items-center gap-2">
                     <div>
                         <div class="font-semibold">{{ filament_name }}</div>
@@ -40,12 +40,12 @@
                     <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <button class="btn-outline text-xs w-full" style="color: var(--danger); border-color: color-mix(in srgb, var(--danger) 65%, var(--edge));">Remove</button>
+                        <button class="btn-outline text-xs w-full text-danger border-danger-mix">Remove</button>
                     </form>
                 </div>
             </div>
         {% endfor %}
     {% else %}
-    <div class="text-sm soft-text border rounded p-3" style="border-color: var(--edge);">No active spools returned from Spoolman.</div>
+    <div class="text-sm soft-text border rounded p-3 border-edge">No active spools returned from Spoolman.</div>
     {% endif %}
 </div>

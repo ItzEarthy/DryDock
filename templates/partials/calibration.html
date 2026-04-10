@@ -8,19 +8,17 @@
     </div>
     {% endif %}
 
-    <div class="p-3 rounded border text-sm"
-        style="border-color: var(--edge); background: color-mix(in srgb, var(--accent) 10%, transparent);">
+    <div class="p-3 rounded border text-sm border-edge bg-accent-soft">
         <div class="font-semibold mb-1">Reminder Status</div>
         <div class="soft-text">Last calibration: {{ app_settings.last_calibration_at.strftime('%Y-%m-%d %H:%M') if
             app_settings.last_calibration_at else "Never" }}</div>
         <div class="soft-text">Reminder interval: every {{ app_settings.calibration_reminder_days }} day(s)</div>
-        <div class="mt-1 font-semibold"
-            style="color: {% if calibration_due %}var(--danger){% else %}var(--ok){% endif %};">
+        <div class="mt-1 font-semibold {{ 'text-danger' if calibration_due else 'text-ok' }}">
             {% if calibration_due %}Calibration is due.{% else %}Calibration is up to date.{% endif %}
         </div>
     </div>
 
-    <div class="p-4 border rounded" style="border-color: var(--edge);">
+    <div class="p-4 border rounded border-edge">
         <p class="text-sm font-bold mb-1">1. Tare Scale</p>
         <p class="text-xs soft-text mb-3">Remove all weight and run a tare using the latest sensor sample.</p>
         <button hx-post="/calibration/tare" hx-target="#calibration-card" class="btn-gray w-full uppercase">Zero
@@ -29,7 +27,7 @@
                 "%.3f"|format(cal_settings.tare_offset) }}</span></div>
     </div>
 
-    <div class="p-4 border rounded" style="border-color: var(--edge);">
+    <div class="p-4 border rounded border-edge">
         <p class="text-sm font-bold mb-1">2. Quick Single-Point Multiplier</p>
         <p class="text-xs soft-text mb-3">Place a known weight and set multiplier immediately.</p>
         <form hx-post="/calibration/multiplier" hx-target="#calibration-card" class="flex gap-2">
@@ -41,7 +39,7 @@
                 "%.8f"|format(cal_settings.calibration_multiplier) }}</span></div>
     </div>
 
-    <div class="p-4 border rounded space-y-3" style="border-color: var(--edge);">
+    <div class="p-4 border rounded space-y-3 border-edge">
         <p class="text-sm font-bold">3. Guided Sampling (10-20 readings)</p>
         <p class="text-xs soft-text">This mode captures repeated samples to average out noise before calculating the
             multiplier.</p>
@@ -55,9 +53,8 @@
 
         <div class="text-xs soft-text">Samples captured: <span class="mono">{{ calibration_samples_count }}</span> / 20
         </div>
-        <div class="w-full h-2 rounded bg-black/20 overflow-hidden">
-            <div class="h-full"
-                style="width: {{ (calibration_samples_count * 5) if calibration_samples_count <= 20 else 100 }}%; background: linear-gradient(90deg, var(--accent), var(--accent-2));">
+        <div class="w-full h-2 rounded progress-track overflow-hidden">
+            <div class="h-full progress-fill" style="--progress: {{ (calibration_samples_count * 5) if calibration_samples_count <= 20 else 100 }}%;">
             </div>
         </div>
 
