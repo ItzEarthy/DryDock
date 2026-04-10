@@ -5,6 +5,18 @@
     </div>
     {% endif %}
 
+    <div class="flex gap-2 items-center">
+        <input aria-label="Search spools" id="spool-search" placeholder="Search spools, material, vendor or ID" class="input-dark flex-1" />
+        <select id="spool-sort" class="input-dark" style="max-width:220px; margin-left:0.5rem;">
+            <option value="default">Sort: Default</option>
+            <option value="material-asc">Material A→Z</option>
+            <option value="remaining-desc">Remaining ↓</option>
+            <option value="remaining-asc">Remaining ↑</option>
+        </select>
+        <button id="spool-clear" class="btn-outline btn-sm" title="Clear">Clear</button>
+    </div>
+
+    <div id="spool-list" class="space-y-3 mt-2">
     {% if spoolman_spools %}
         {% for spool in spoolman_spools %}
             {% set spool_id = spool.id if spool.id is defined else (spool.spool_id if spool.spool_id is defined else '') %}
@@ -14,7 +26,7 @@
             {% set vendor_name = filament.vendor.name if filament and filament.vendor is defined and filament.vendor and filament.vendor.name is defined else (filament.vendor if filament and filament.vendor is defined else 'Unknown') %}
             {% set remaining = spool.remaining_weight if spool.remaining_weight is defined else (spool.weight if spool.weight is defined else 0) %}
 
-            <div class="p-3 rounded border space-y-2 border-edge">
+            <div class="p-3 rounded border space-y-2 border-edge spool-item" data-material="{{ (material_name|lower) }}" data-remaining="{{ remaining }}" data-search="{{ (filament_name ~ ' ' ~ material_name ~ ' ' ~ vendor_name ~ ' ' ~ spool_id)|lower }}">
                 <div class="flex justify-between items-center gap-2">
                     <div>
                         <div class="font-semibold">{{ filament_name }}</div>
@@ -48,4 +60,50 @@
     {% else %}
     <div class="text-sm soft-text border rounded p-3 border-edge">No active spools returned from Spoolman.</div>
     {% endif %}
+    </div>
+
+    <script>
+    (function initSpoolList(root){
+        const container = root.querySelector('#spool-list');
+        if (!container) return;
+
+        const searchEl = root.querySelector('#spool-search');
+        const sortEl = root.querySelector('#spool-sort');
+        const clearBtn = root.querySelector('#spool-clear');
+
+        function filterAndSort() {
+            const q = (searchEl?.value || '').trim().toLowerCase();
+            const items = Array.from(container.querySelectorAll('.spool-item'));
+
+            // filter
+            items.forEach(item => {
+                const text = item.getAttribute('data-search') || '';
+                item.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+            });
+
+            // sort
+            const mode = sortEl?.value || 'default';
+            let toSort = items.filter(i => i.style.display !== 'none');
+            if (mode === 'material-asc') {
+                toSort.sort((a,b)=> (a.dataset.material || '').localeCompare(b.dataset.material || ''));
+            } else if (mode === 'remaining-desc') {
+                toSort.sort((a,b)=> Number(b.dataset.remaining) - Number(a.dataset.remaining));
+            } else if (mode === 'remaining-asc') {
+                toSort.sort((a,b)=> Number(a.dataset.remaining) - Number(b.dataset.remaining));
+            }
+
+            // append in sorted order (non-sorted keeps server order)
+            if (mode !== 'default') {
+                toSort.forEach(node => container.appendChild(node));
+            }
+        }
+
+        if (searchEl) searchEl.addEventListener('input', filterAndSort);
+        if (sortEl) sortEl.addEventListener('change', filterAndSort);
+        if (clearBtn) clearBtn.addEventListener('click', ()=>{ if (searchEl) searchEl.value=''; if (sortEl) sortEl.value='default'; filterAndSort(); });
+
+        // run once on load
+        filterAndSort();
+    })(document.currentScript ? document.currentScript.parentElement : document);
+    </script>
 </div>
