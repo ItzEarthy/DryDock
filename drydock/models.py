@@ -38,8 +38,6 @@ class AppSettings(db.Model):
     webhook_url = db.Column(db.String(255), nullable=True)
     theme = db.Column(db.String(20), nullable=False, default="dark")
     log_level = db.Column(db.String(20), nullable=False, default="INFO")
-    temp_compensation_factor = db.Column(db.Float, nullable=False, default=0.0)
-    temp_reference_c = db.Column(db.Float, nullable=False, default=25.0)
     calibration_reminder_days = db.Column(db.Integer, nullable=False, default=30)
     last_calibration_at = db.Column(db.DateTime, nullable=True)
     backup_interval_hours = db.Column(

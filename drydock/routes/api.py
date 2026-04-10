@@ -121,11 +121,8 @@ def update_data():
     reported_weight = _to_float(data.get("weight"))
     if raw_adc is None and reported_weight is not None:
         multiplier = calibration.calibration_multiplier if calibration.calibration_multiplier else 1.0
-        temp_1 = _to_float(data.get("temp_1"))
-        ref_temp = settings.temp_reference_c if settings.temp_reference_c is not None else 25.0
-        temp_factor = settings.temp_compensation_factor if settings.temp_compensation_factor is not None else 0.0
-        drift_adjustment = ((temp_1 if temp_1 is not None else ref_temp) - ref_temp) * temp_factor
-        raw_adc = (reported_weight / multiplier) + calibration.tare_offset + drift_adjustment
+        # No temperature compensation: compute raw_adc purely from reported weight and multiplier.
+        raw_adc = (reported_weight / multiplier) + calibration.tare_offset
 
     rfid_uid = str(data.get("rfid_uid")).strip() if data.get("rfid_uid") else None
     if rfid_uid == "":

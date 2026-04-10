@@ -160,13 +160,7 @@ def save_settings():
     if log_retention_days is not None and log_retention_days >= 1:
         settings.log_retention_days = log_retention_days
 
-    temp_comp_factor = _to_float(request.form.get("temp_compensation_factor"))
-    if temp_comp_factor is not None:
-        settings.temp_compensation_factor = temp_comp_factor
-
-    temp_reference = _to_float(request.form.get("temp_reference_c"))
-    if temp_reference is not None:
-        settings.temp_reference_c = temp_reference
+    # temperature compensation removed
 
     calibration_reminder_days = _to_int(request.form.get("calibration_reminder_days"))
     if calibration_reminder_days is not None and calibration_reminder_days >= 1:
@@ -220,8 +214,6 @@ def export_settings():
             "webhook_url": settings.webhook_url,
             "theme": settings.theme,
             "log_level": settings.log_level,
-            "temp_compensation_factor": settings.temp_compensation_factor,
-            "temp_reference_c": settings.temp_reference_c,
             "calibration_reminder_days": settings.calibration_reminder_days,
             "backup_interval_hours": settings.backup_interval_hours,
             "backup_retention_count": settings.backup_retention_count,
@@ -267,8 +259,6 @@ def import_settings():
         "webhook_url",
         "theme",
         "log_level",
-        "temp_compensation_factor",
-        "temp_reference_c",
         "calibration_reminder_days",
         "backup_interval_hours",
         "backup_retention_count",
