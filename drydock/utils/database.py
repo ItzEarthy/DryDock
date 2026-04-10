@@ -55,12 +55,6 @@ def ensure_schema_extensions() -> None:
     # Enable WAL mode for concurrent SQLite reads and writes
     db.session.execute(text("PRAGMA journal_mode=WAL;"))
 
-    user_cols = _table_columns("user")
-    if "role" not in user_cols:
-        db.session.execute(
-            text("ALTER TABLE user ADD COLUMN role VARCHAR(20) DEFAULT 'user'")
-        )
-
     app_cols = _table_columns("app_settings")
     app_additions = [
         ("theme", "theme VARCHAR(20) NOT NULL DEFAULT 'dark'"),
@@ -111,16 +105,24 @@ def ensure_schema_extensions() -> None:
 
 
 def ensure_first_admin() -> None:
+    """Back-compat helper: ensure the install only has a single admin account.
+
+    DryDock now supports exactly one account created during /setup.
+    If multiple users exist (from older versions), keep the oldest and delete the rest.
+    """
+
     users = User.query.order_by(User.id.asc()).all()
-    if not users:
+    if len(users) <= 1:
         return
 
-    admin_exists = any(u.role == "admin" for u in users)
-    if admin_exists:
-        return
-
-    users[0].role = "admin"
+    kept = users[0]
+    for extra in users[1:]:
+        db.session.delete(extra)
     db.session.commit()
+    try:
+        log_event("INFO", "auth_pruned_extra_users", kept_user_id=kept.id, removed=len(users) - 1)
+    except Exception:
+        pass
 
 
 def _db_file_path():

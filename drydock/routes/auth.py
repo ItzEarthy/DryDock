@@ -23,18 +23,19 @@ def get_current_user():
     return db.session.get(User, user_id)
 
 
-def admin_required(fn):
+def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         user = get_current_user()
-        if not user or user.role != "admin":
-            return (
-                "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Admin permission required.</div>",
-                403,
-            )
+        if not user:
+            return redirect(url_for("auth.login"))
         return fn(*args, **kwargs)
 
     return wrapper
+
+
+# Backwards-compatible name: older code used admin_required.
+admin_required = login_required
 
 
 @auth_bp.app_context_processor
@@ -97,7 +98,6 @@ def setup():
             user = User(
                 username=username,
                 password_hash=generate_password_hash(password),
-                role="admin",
             )
             db.session.add(user)
             db.session.commit()
@@ -126,4 +126,4 @@ def logout():
     return redirect(url_for("auth.login"))
 
 
-__all__ = ["auth_bp", "admin_required", "get_current_user"]
+__all__ = ["auth_bp", "login_required", "admin_required", "get_current_user"]
