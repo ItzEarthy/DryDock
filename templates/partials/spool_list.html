@@ -38,18 +38,18 @@
                 <div class="text-xs soft-text">Remaining: <span class="mono">{{ "%.1f"|format(remaining if remaining is not none else 0) }} g</span></div>
 
                 <div class="grid grid-cols-3 gap-2">
-                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="reweigh">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
                         <input type="hidden" name="weight" value="{{ weight_grams if weight_grams is not none else remaining }}">
                         <button class="btn-outline text-xs w-full">Re-weigh</button>
                     </form>
-                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="mark_used">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
                         <button class="btn-outline text-xs w-full">Mark Used</button>
                     </form>
-                    <form hx-post="/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
+                    <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
                         <button class="btn-outline text-xs w-full text-danger border-danger-mix">Remove</button>

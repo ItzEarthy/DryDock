@@ -12,7 +12,7 @@
     </div>
 
     <div class="flex gap-2">
-        <button class="btn-outline flex-1 uppercase" hx-get="/wizard/step/clear_scan" hx-target="#wizard-body" hx-swap="innerHTML">Back</button>
-        <button class="btn-blue flex-1 uppercase" hx-get="/wizard/step/confirm?selected_weight={{ "%.2f"|format(weight_grams if weight_grams is not none else 0) }}" hx-target="#wizard-body" hx-swap="innerHTML">Continue</button>
+        <button class="btn-outline flex-1 uppercase" hx-get="/filaments/wizard/step/clear_scan" hx-target="#wizard-body" hx-swap="innerHTML">Back</button>
+        <button class="btn-blue flex-1 uppercase" hx-get="/filaments/wizard/step/confirm?selected_weight={{ "%.2f"|format(weight_grams if weight_grams is not none else 0) }}" hx-target="#wizard-body" hx-swap="innerHTML">Continue</button>
     </div>
 </div>

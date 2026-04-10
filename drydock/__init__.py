@@ -45,10 +45,12 @@ def create_app(config_object: object | None = None) -> Flask:
     from .routes.api import api_bp
     from .routes.auth import auth_bp
     from .routes.dashboard import dashboard_bp
+    from .routes.filament import filament_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(filament_bp)
 
     _bootstrap_app(app)
 

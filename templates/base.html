@@ -27,6 +27,7 @@
         <div class="flex items-center gap-3 flex-wrap justify-end">
             <nav class="flex gap-2">
             <a href="/" class="nav-link {% if request.path == '/' %}nav-active{% endif %}">Dashboard</a>
+            <a href="/filaments" class="nav-link {% if request.path.startswith('/filaments') %}nav-active{% endif %}">Filament Management</a>
             <a href="/settings_page" class="nav-link {% if request.path == '/settings_page' %}nav-active{% endif %}">Settings</a>
             <a href="/logout" class="nav-link text-danger">Logout</a>
             </nav>
