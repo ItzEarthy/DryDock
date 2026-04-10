@@ -15,6 +15,20 @@ read -p "Enter the WiFi SSID for DryDock: " WIFI_SSID
 read -s -p "Enter the WiFi Password: " WIFI_PASS
 echo ""
 
+echo "Select your ESP32 Board Type:"
+echo "1) Standard ESP32 (Dev Module)"
+echo "2) ESP32-S3 (Dev Kit)"
+echo "3) ESP32-C3 (Dev Kit)"
+read -p "Enter choice [1-3]: " BOARD_CHOICE
+
+case $BOARD_CHOICE in
+    2) BOARD_ID="esp32-s3-devkitc-1" ;;
+    3) BOARD_ID="esp32-c3-devkitc-02" ;;
+    *) BOARD_ID="esp32dev" ;;
+esac
+
+echo "BOARD_ID=\"$BOARD_ID\"" >> .env
+
 echo "WIFI_SSID=\"$WIFI_SSID\"" > .env
 echo "WIFI_PASS=\"$WIFI_PASS\"" >> .env
 echo "Variables saved to .env."
@@ -47,6 +61,12 @@ echo ""
 echo "Installing system dependencies..."
 sudo apt update
 sudo apt install -y python3-venv python3-pip curl git build-essential
+
+# --- RASPBERRY PI COMPILER FIX ---
+if [ -f "/lib/ld-linux-armhf.so.3" ] && [ ! -f "/lib/ld-linux.so.3" ]; then
+    echo "Applying Raspberry Pi toolchain linker fix..."
+    sudo ln -s /lib/ld-linux-armhf.so.3 /lib/ld-linux.so.3
+fi
 
 # --- 3. ESP32 USB PERMISSIONS ---
 echo "Setting up USB permissions for flashing the ESP32..."
