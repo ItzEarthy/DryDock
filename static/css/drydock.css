@@ -1,0 +1,247 @@
+/* DryDock Theme - variables + components
+   Dark mode is the default (defined on :root).
+   Light mode overrides apply when an element has [data-theme="light"].
+
+   Design system:
+   - Brand colors
+   - Dark mode mapped to :root
+   - Light mode mapped to [data-theme="light"]
+   - Typography variables
+*/
+
+/* Core brand colors */
+:root {
+  --color-navy: #05203A;
+  --color-red: #E0282E;
+  --color-green: #20904E;
+  --color-sand: #DFBF88;
+  --color-grey: #B0B3B8;
+
+  /* DARK MODE (DEFAULT) */
+  --bg-primary: #0B1120;
+  --bg-surface: #1E293B;
+  --text-primary: #F8FAFC;
+  --text-muted: #94A3B8;
+  --border-color: #334155;
+
+  /* Typography */
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing / geometry */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-subtle: 0 6px 18px rgba(2,6,23,0.45);
+  --shadow-soft: 0 4px 10px rgba(2,6,23,0.28);
+
+  /* Legacy / compatibility aliases used by templates */
+  --accent: #0f6a57;
+  --accent-2: #1b9aaa;
+  --danger: var(--color-red);
+  --ok: var(--color-green);
+  --edge: rgba(132, 148, 158, 0.35);
+  --chart-grid: rgba(132, 148, 158, 0.25);
+  --bg: var(--bg-primary);
+  --bg-soft: color-mix(in srgb, var(--bg-primary) 88%, var(--bg-surface));
+  --card: var(--bg-surface);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
+}
+
+/* LIGHT MODE overrides */
+[data-theme="light"] {
+  --bg-primary: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-muted: #64748B;
+  --border-color: #E2E8F0;
+
+  /* Legacy aliases for light theme */
+  --accent: #0f6a57;
+  --accent-2: #1b9aaa;
+  --danger: var(--color-red);
+  --ok: var(--color-green);
+  --edge: rgba(88, 113, 137, 0.28);
+  --chart-grid: rgba(88, 113, 137, 0.2);
+  --bg: var(--bg-primary);
+  --bg-soft: color-mix(in srgb, var(--bg-primary) 88%, var(--bg-surface));
+  --card: var(--bg-surface);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
+}
+
+/* Base reset and layout */
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; }
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.35;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Utility helpers */
+.container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+.rounded { border-radius: var(--radius-md); }
+.shadow-subtle { box-shadow: var(--shadow-subtle); }
+.shadow-soft { box-shadow: var(--shadow-soft); }
+
+/* Cards / Surfaces */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 1rem;
+  border-radius: calc(var(--radius-md) + 2px);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.35);
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+.card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(2,6,23,0.38); }
+.card--flush { padding: 0; }
+.card__title { font-weight: 700; margin: 0 0 0.5rem 0; }
+.card__body { margin: 0; }
+
+/* Telemetry data / monospaced numeric display */
+.telemetry-data,
+.mono-text {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  -moz-font-feature-settings: "tnum" 1;
+  -webkit-font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0.2px;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
+.small-muted { color: var(--text-muted); font-size: 0.9rem; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.btn:focus { outline: 3px solid color-mix(in srgb, var(--color-navy) 16%, transparent); outline-offset: 2px; }
+.btn:active { transform: translateY(1px); }
+
+/* Primary button uses navy brand */
+.btn-primary {
+  background-color: var(--color-navy);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--color-navy) 85%, black 15%);
+  box-shadow: 0 6px 14px rgba(5,32,58,0.36);
+}
+.btn-primary:hover { filter: brightness(1.05); }
+
+/* Success / Danger utility buttons */
+.btn-success {
+  background-color: var(--color-green);
+  color: #082812;
+  border-color: color-mix(in srgb, var(--color-green) 84%, black 12%);
+}
+.btn-danger {
+  background-color: var(--color-red);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--color-red) 84%, black 12%);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border-color);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--edge);
+  color: var(--text-primary);
+}
+
+/* Small button variants */
+.btn-sm { padding: 0.28rem 0.6rem; font-size: 0.9rem; border-radius: 6px; }
+
+/* Badges / status indicators */
+.badge {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.18rem 0.6rem; border-radius: 999px; font-size: 0.8rem;
+  background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+  border: 1px solid var(--border-color); color: var(--text-primary);
+}
+
+.status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 3px 8px rgba(2,6,23,0.28); }
+.status-online { background: var(--color-green); color: var(--color-green); }
+.status-offline { background: var(--color-red); color: var(--color-red); }
+.status-warning { background: var(--color-sand); color: var(--color-sand); }
+
+/* More expressive status badges */
+.badge--online { background: color-mix(in srgb, var(--color-green) 8%, var(--bg-surface)); border-color: color-mix(in srgb, var(--color-green) 22%, transparent); color: var(--text-primary); }
+.badge--offline { background: color-mix(in srgb, var(--color-red) 8%, var(--bg-surface)); border-color: color-mix(in srgb, var(--color-red) 22%, transparent); }
+.badge--warning { background: color-mix(in srgb, var(--color-sand) 10%, var(--bg-surface)); border-color: color-mix(in srgb, var(--color-sand) 22%, transparent); color: var(--text-primary); }
+
+/* Forms */
+.input, textarea, select {
+  width: 100%; padding: 0.56rem 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent); color: var(--text-primary);
+}
+.input:focus, textarea:focus, select:focus { box-shadow: 0 6px 18px rgba(2,6,23,0.12); border-color: color-mix(in srgb, var(--color-navy) 26%, var(--border-color)); outline: none; }
+
+/* Backward-compatible input class used across templates */
+.input-dark { width: 100%; padding: 0.56rem 0.75rem; border-radius: 8px; border: 1px solid var(--edge); background: color-mix(in srgb, var(--bg-surface) 90%, transparent); color: var(--text-primary); }
+.input-dark:focus { box-shadow: 0 6px 18px rgba(2,6,23,0.12); border-color: color-mix(in srgb, var(--color-navy) 26%, var(--border-color)); outline: none; }
+
+/* Gray/neutral button used in several templates */
+.btn-gray {
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-primary);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 28%, var(--border-color));
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.btn-gray:hover { filter: brightness(1.03); }
+
+/* Tables */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color); }
+.table thead th { font-weight: 700; }
+
+/* Responsive helpers */
+.row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.col { flex: 1 1 240px; }
+
+/* Tiny helpers for legibility */
+.kv { display: flex; gap: 0.6rem; align-items: baseline; }
+.kv .k { color: var(--text-muted); font-size: 0.9rem; }
+.kv .v { font-weight: 700; }
+
+/* Accessibility-ish reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card, .btn { transition: none !important; }
+}
+
+/* End of stylesheet */
+
+/* Utility classes for compatibility with existing templates */
+.border-edge { border-color: var(--edge) !important; }
+.bg-accent-gradient { background: linear-gradient(130deg, var(--accent), var(--accent-2)) !important; }
+.bg-accent-soft { background: color-mix(in srgb, var(--accent) 14%, transparent) !important; }
+.text-danger { color: var(--danger) !important; }
+.text-ok { color: var(--ok) !important; }
+.border-danger-mix { border-color: color-mix(in srgb, var(--danger) 65%, var(--edge)) !important; }
+.bg-accent-linear { background: linear-gradient(90deg, var(--accent), var(--accent-2)) !important; }
+.progress-track { background: color-mix(in srgb, var(--bg-surface) 78%, transparent); }
+.progress-fill { height: 8px; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); display: block; width: var(--progress, 0%); }
