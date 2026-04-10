@@ -59,11 +59,7 @@ def ensure_schema_extensions() -> None:
     app_additions = [
         ("theme", "theme VARCHAR(20) NOT NULL DEFAULT 'dark'"),
         ("log_level", "log_level VARCHAR(20) NOT NULL DEFAULT 'INFO'"),
-        (
-            "temp_compensation_factor",
-            "temp_compensation_factor FLOAT NOT NULL DEFAULT 0.0",
-        ),
-        ("temp_reference_c", "temp_reference_c FLOAT NOT NULL DEFAULT 25.0"),
+        # Temperature compensation removed; keep DB minimal.
         (
             "calibration_reminder_days",
             "calibration_reminder_days INTEGER NOT NULL DEFAULT 30",

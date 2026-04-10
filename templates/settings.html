@@ -50,19 +50,7 @@
                     <input type="url" name="webhook_url" value="{{ app_settings.webhook_url }}" class="input-dark">
                 </div>
 
-                <div class="p-3 border rounded space-y-2" style="border-color: var(--edge);">
-                    <div class="font-semibold text-sm">Temperature Compensation</div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs soft-text">Drift factor (raw units per deg C)</label>
-                            <input type="number" step="any" name="temp_compensation_factor" value="{{ app_settings.temp_compensation_factor }}" class="input-dark">
-                        </div>
-                        <div>
-                            <label class="block text-xs soft-text">Reference temp (deg C)</label>
-                            <input type="number" step="0.1" name="temp_reference_c" value="{{ app_settings.temp_reference_c }}" class="input-dark">
-                        </div>
-                    </div>
-                </div>
+                <!-- Temperature compensation removed -->
 
                 <div class="p-3 border rounded space-y-2" style="border-color: var(--edge);">
                     <div class="font-semibold text-sm">Calibration + Backup Scheduling</div>

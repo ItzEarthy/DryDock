@@ -28,14 +28,8 @@ def _to_int(value, default=None):
 def calculate_weight_grams(raw_adc, temp_1, calibration, settings):
     if raw_adc is None:
         return None
-
     multiplier = calibration.calibration_multiplier if calibration.calibration_multiplier else 1.0
-    temp_factor = settings.temp_compensation_factor if settings.temp_compensation_factor is not None else 0.0
-    ref_temp = settings.temp_reference_c if settings.temp_reference_c is not None else 25.0
-    measured_temp = temp_1 if temp_1 is not None else ref_temp
-
-    drift_adjustment = (measured_temp - ref_temp) * temp_factor
-    compensated_raw = raw_adc - calibration.tare_offset - drift_adjustment
+    compensated_raw = raw_adc - calibration.tare_offset
     return compensated_raw * multiplier
 
 
