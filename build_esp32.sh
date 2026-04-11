@@ -15,7 +15,8 @@ if [ -f "platformio.ini" ] && ! grep -q "board = $BOARD_ID" platformio.ini; then
 fi
 
 if [ ! -f "platformio.ini" ]; then
-    pio project init --board "$BOARD_ID" --project-option "framework=arduino"
+    echo "Initializing PlatformIO with Safe Flash Mode (DIO)..."
+    pio project init --board "$BOARD_ID" --project-option "framework=arduino" --project-option "board_build.flash_mode = dio"
     pio pkg install --library "miguelbalboa/MFRC522" --library "adafruit/Adafruit AM2320 sensor library" --library "adafruit/Adafruit NAU7802 Library"
 fi
 cd ..
