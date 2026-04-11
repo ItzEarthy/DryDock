@@ -70,7 +70,7 @@ Available actions for each spool:
 | Action | Description |
 |---|---|
 | **Re-weigh** | Updates the spool's remaining weight in Spoolman using the current scale reading. Subtracts the empty spool weight automatically. |
-| **Mark as Used** | Sets the remaining weight to 0 in Spoolman. |
+| **Mark as Used** | Sets the remaining weight to 0 in Spoolman, indicating the spool has been fully consumed. |
 | **Archive** | Marks the spool as archived in Spoolman so it no longer appears in active lists. |
 | **Unlink RFID** | Removes the RFID UID association from the spool record in Spoolman. |
 | **Remove** | Permanently deletes the spool record from Spoolman. |

@@ -41,7 +41,7 @@ After changing this value, click **Test Connection** to verify that DryDock can 
 
 ### Humidity Threshold
 
-The minimum acceptable humidity delta (in percent) between the inside and outside readings. If the measured delta (inside minus ambient) falls below this value, the dashboard flags the desiccant as saturated and you should replace or regenerate the silica gel.
+The minimum acceptable humidity delta (in percent) between the inside and outside readings. If the measured delta (ambient minus inside) falls below this value, the dashboard flags the desiccant as saturated and you should replace or regenerate the silica gel.
 
 **Default:** `10.0` (10%)
 
