@@ -36,7 +36,7 @@ import os
 from drydock.utils.firmware import generate_esp32_firmware
 ssid = os.environ.get('WIFI_SSID', '')
 pwd = os.environ.get('WIFI_PASS', '')
-url = f'http://{os.environ.get(\"PI_IP\")}:5000/api/telemetry' 
+url = f'http://{os.environ.get("PI_IP")}:5000/api/update'
 with open('firmware/src/main.cpp', 'w') as f:
     f.write(generate_esp32_firmware(ssid, pwd, url))
 "
