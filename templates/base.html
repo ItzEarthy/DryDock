@@ -73,7 +73,15 @@
         const willOpen = panel.classList.contains("hidden");
         panel.classList.toggle("hidden", !willOpen);
         if (btn) {
-            btn.textContent = willOpen ? "Collapse" : "Expand";
+            btn.title = willOpen ? "Collapse" : "Expand";
+            const icon = btn.querySelector("svg");
+            if (icon) {
+                if (willOpen) {
+                    icon.classList.remove("rotate-180");
+                } else {
+                    icon.classList.add("rotate-180");
+                }
+            }
         }
         setCollapseState(panelId, willOpen);
     }
@@ -85,12 +93,16 @@
             if (!panel) return;
 
             const state = getCollapseState(panelId);
+            const icon = btn.querySelector("svg");
+
             if (state === "closed") {
                 panel.classList.add("hidden");
-                btn.textContent = "Expand";
+                btn.title = "Expand";
+                if (icon) icon.classList.add("rotate-180");
             } else {
                 panel.classList.remove("hidden");
-                btn.textContent = "Collapse";
+                btn.title = "Collapse";
+                if (icon) icon.classList.remove("rotate-180");
             }
 
             if (!btn.dataset.collapseBound) {

@@ -5,7 +5,9 @@
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-2xl font-bold">Configuration</h2>
-                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-settings-config">Collapse</button>
+                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-config" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
             </div>
             <div id="panel-settings-config">
 
@@ -45,11 +47,6 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs soft-text">Webhook URL (alerts)</label>
-                    <input type="url" name="webhook_url" value="{{ app_settings.webhook_url }}" class="input-dark">
-                </div>
-
                 <!-- Temperature compensation removed -->
 
                 <div class="p-3 border rounded space-y-2 border-edge">
@@ -79,7 +76,9 @@
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-xl font-bold">Data, Logs, Config, and Backups</h2>
-                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-settings-data">Collapse</button>
+                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-data" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
             </div>
             <div id="panel-settings-data">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
@@ -110,7 +109,9 @@
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-xl font-bold">Firmware Builder</h2>
-                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-settings-firmware">Collapse</button>
+                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-firmware" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
             </div>
             <div id="panel-settings-firmware">
             <form action="/build_firmware" method="POST" class="space-y-4">
@@ -136,12 +137,13 @@
             </form>
             </div>
         </div>
-    </div>
 
         <div class="card space-y-3">
             <div class="flex justify-between items-center mb-2 section-title">
                 <h2 class="text-xl font-bold">System Health</h2>
-                <button type="button" class="btn-outline text-xs" data-collapse-target="panel-health">Collapse</button>
+                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-health" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
             </div>
             <div id="panel-health" class="space-y-3">
                 <div class="flex justify-between text-sm pb-2 mt-3">
@@ -162,6 +164,7 @@
                 </div>
             </div>
         </div>
+    </div>
 </div>
 {% endblock %}
 

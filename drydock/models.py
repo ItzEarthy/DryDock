@@ -35,7 +35,6 @@ class AppSettings(db.Model):
     spoolman_url = db.Column(db.String(255), default="http://localhost:8000")
     humidity_threshold = db.Column(db.Float, default=10.0)
     log_retention_days = db.Column(db.Integer, default=7)
-    webhook_url = db.Column(db.String(255), nullable=True)
     theme = db.Column(db.String(20), nullable=False, default="dark")
     log_level = db.Column(db.String(20), nullable=False, default="INFO")
     calibration_reminder_days = db.Column(db.Integer, nullable=False, default=30)

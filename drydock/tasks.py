@@ -2,28 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from .models import AppSettings, BackupLog, SensorLog
 from .utils.database import create_database_backup, get_or_create
 from .utils.logging import log_event
-
-
-def trigger_webhook(message, severity="info"):
-    settings = get_or_create(AppSettings)
-    if not settings.webhook_url:
-        return False
-
-    try:
-        requests.post(
-            settings.webhook_url,
-            json={"content": f"[{severity.upper()}] {message}"},
-            timeout=3,
-        )
-        return True
-    except requests.RequestException:
-        return False
 
 
 def prune_old_logs(app):
@@ -64,17 +47,16 @@ def monitor_humidity_thresholds(app):
             f"DryDock humidity alert: delta={hum_delta:.2f}% is below threshold "
             f"{settings.humidity_threshold:.2f}%"
         )
-        if trigger_webhook(message, severity="warn"):
-            settings.last_humidity_alert_at = datetime.utcnow()
-            from .extensions import db
+        settings.last_humidity_alert_at = datetime.utcnow()
+        from .extensions import db
 
-            db.session.commit()
-            log_event(
-                "INFO",
-                "humidity_alert_sent",
-                delta=hum_delta,
-                threshold=settings.humidity_threshold,
-            )
+        db.session.commit()
+        log_event(
+            "INFO",
+            "humidity_alert_triggered",
+            delta=hum_delta,
+            threshold=settings.humidity_threshold,
+        )
 
 
 def run_scheduled_backups(app):

@@ -165,7 +165,6 @@ def save_settings():
     settings = get_or_create(AppSettings)
 
     settings.spoolman_url = (request.form.get("spoolman_url") or "").strip()
-    settings.webhook_url = (request.form.get("webhook_url") or "").strip()
 
     humidity_threshold = _to_float(request.form.get("humidity_threshold"))
     if humidity_threshold is not None:
@@ -226,7 +225,6 @@ def export_settings():
             "spoolman_url": settings.spoolman_url,
             "humidity_threshold": settings.humidity_threshold,
             "log_retention_days": settings.log_retention_days,
-            "webhook_url": settings.webhook_url,
             "theme": settings.theme,
             "log_level": settings.log_level,
             "calibration_reminder_days": settings.calibration_reminder_days,
@@ -271,7 +269,6 @@ def import_settings():
         "spoolman_url",
         "humidity_threshold",
         "log_retention_days",
-        "webhook_url",
         "theme",
         "log_level",
         "calibration_reminder_days",
