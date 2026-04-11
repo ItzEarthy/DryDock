@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="max-w-6xl mx-auto">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
         <h1 class="text-2xl font-bold">Filament Management</h1>
-        <div class="space-x-2">
+        <div class="flex space-x-2">
             {% if spoolman_connected %}
-                <button class="btn-outline" hx-get="/filaments/partials/filament_options" hx-target="#filament-options" hx-swap="innerHTML">Refresh Filaments</button>
-                <button class="btn-blue" hx-get="/filaments/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Open Wizard</button>
+                <button class="btn-outline flex-1 md:flex-none" hx-get="/filaments/partials/filament_options" hx-target="#filament-options" hx-swap="innerHTML">Refresh Filaments</button>
+                <button class="btn-blue flex-1 md:flex-none" hx-get="/filaments/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Open Wizard</button>
             {% else %}
-                <button class="btn-outline" disabled>Refresh Filaments</button>
-                <button class="btn-gray" disabled>Spoolman Offline</button>
+                <button class="btn-outline flex-1 md:flex-none" disabled>Refresh Filaments</button>
+                <button class="btn-gray flex-1 md:flex-none" disabled>Spoolman Offline</button>
             {% endif %}
         </div>
         <div id="filament-options" class="hidden"></div>
@@ -17,7 +17,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
         <!-- Main Column: Active Spools (spanning 7 columns on md displays) -->
-        <div class="md:col-span-8 flex flex-col gap-6">
+        <div class="md:col-span-8 flex flex-col gap-6 order-2 md:order-1">
             {% if spoolman_connected %}
             <div class="card flex flex-col" style="max-height: 80vh;">
                 <h2 class="text-lg font-semibold mb-2">Active Spools</h2>
@@ -34,7 +34,7 @@
         </div>
         
         <!-- Sidebar Column: RFID/Sync Workflow (spanning 5 columns on md displays) -->
-        <div class="md:col-span-4 flex flex-col gap-6">
+        <div class="md:col-span-4 flex flex-col gap-6 order-1 md:order-2">
             {% if spoolman_connected and sensor_connected %}
             <div id="rfid-spool-card" class="card hidden">
                 <h2 class="text-lg font-semibold mb-2">Scanned Spool</h2>

@@ -37,7 +37,9 @@
                 <div class="text-xs soft-text mb-3">
                     Breaches where humidity delta is below threshold are highlighted as red markers.
                 </div>
-                <canvas id="envChart" height="96"></canvas>
+                <div class="relative w-full h-64 sm:h-72 md:h-96">
+                    <canvas id="envChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -243,7 +245,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 interaction: { mode: "index", intersect: false },
                 scales: {
                     y: { grid: { color: palette.grid }, ticks: { color: palette.text } },
