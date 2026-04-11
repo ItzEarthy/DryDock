@@ -243,3 +243,42 @@ h1, h2, h3, h4, h5 { color: var(--text-primary); margin: 0; }
 .advanced { display: none; }
 body.show-advanced .advanced { display: block; }
 .muted-compact { font-size: 0.8rem; color: var(--text-muted); }
+
+/* ==== Mobile Compatibility & Responsive Upgrades ==== */
+@media (max-width: 768px) {
+  /* Smaller typography for mobile */
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.1rem !important; }
+  
+  /* Adjusted padding for smaller screens */
+  body {
+    padding: 0.75rem !important;
+  }
+  .card {
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+  }
+  
+  /* Make table wrappers scrollable horizontally on mobile */
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Inputs shouldn't zoom on iOS if font size is at least 16px */
+  .input, .input-dark, textarea, select {
+    font-size: 16px; 
+  }
+  
+  /* Stacking utility for flex rows that should stack on mobile */
+  .mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .mobile-col > * {
+    width: 100% !important;
+  }
+}
