@@ -340,14 +340,42 @@ def get_system_health():
 
     from .dashboard import _sensor_status
 
+    settings = get_or_create(AppSettings)
+    installed_version = getattr(settings, 'installed_version', '') or ''
+
     return jsonify(
         {
             "uptime": uptime,
             "esp32": _sensor_status(),
             "spoolman": {"ok": spoolman_ok, "msg": spoolman_msg},
             "database": {"ok": db_ok, "msg": db_msg},
+            "installed_version": installed_version,
         }
     )
+
+
+@api_bp.route("/api/system/install_version", methods=["POST"])
+def set_installed_version():
+    settings = get_or_create(AppSettings)
+    payload = request.get_json() or {}
+    ver = payload.get("version") or ""
+    settings.installed_version = ver
+    from ..extensions import db as _db
+    try:
+        _db.session.add(settings)
+        _db.session.commit()
+        return jsonify({"ok": True, "installed_version": settings.installed_version})
+    except Exception as exc:
+        # Log minimal server-side info and return a safe message to client
+        try:
+            log_event("ERROR", "save_installed_version_failed", error=str(exc))
+        except Exception:
+            pass
+        _db.session.rollback()
+        return (
+            jsonify({"ok": False, "error": "Failed to save installed version on server."}),
+            500,
+        )
 
 
 @api_bp.route("/api/logs/download")

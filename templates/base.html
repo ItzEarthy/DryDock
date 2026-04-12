@@ -16,8 +16,8 @@
 <body{% if active_theme == 'light' %} data-theme="light"{% endif %} class="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
     <header class="border-b pb-4 mb-6 flex flex-col gap-4 md:flex-row md:justify-between md:items-center border-edge">
         <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-full border-2 overflow-hidden border-edge bg-accent-gradient">
-                <img src="/static/logo.png" onerror="this.style.display='none'">
+                <div class="w-16 h-16 rounded-full border-2 overflow-hidden border-edge bg-accent-gradient">
+                <img src="{{ url_for('static', filename='logo.svg') }}" alt="DryDock logo" onerror="this.style.display='none'">
             </div>
             <div>
                 <h1 class="text-3xl font-bold uppercase">DryDock</h1>
@@ -135,5 +135,7 @@
     document.addEventListener('DOMContentLoaded', () => setProgressFromData(document));
     document.body.addEventListener('htmx:afterSwap', (evt) => setProgressFromData(evt.detail.target || document));
     </script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="{{ url_for('static', filename='js/update_popup.js') }}"></script>
 </body>
 </html>

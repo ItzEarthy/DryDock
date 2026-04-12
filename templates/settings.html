@@ -162,6 +162,10 @@
                     <span class="soft-text">Uptime</span>
                     <span id="health-uptime" class="mono">{{ uptime }}</span>
                 </div>
+                <div class="flex justify-between text-sm pt-2">
+                    <span class="soft-text">Installed Version</span>
+                    <span id="health-version" class="mono">{{ app_settings.installed_version or 'Unknown' }}</span>
+                </div>
             </div>
         </div>
     </div>
