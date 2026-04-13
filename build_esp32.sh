@@ -19,7 +19,8 @@ if [ ! -f "platformio.ini" ]; then
     pio project init --board "$BOARD_ID" \
         --project-option "framework=arduino" \
         --project-option "board_build.flash_mode = opi" \
-        --project-option "board_build.arduino.memory_type = opi_opi"
+        --project-option "board_build.arduino.memory_type = opi_opi" \
+        --project-option "build_flags = -D ARDUINO_USB_MODE=1 -D ARDUINO_USB_CDC_ON_BOOT=1"
     
     # Re-install libraries
     pio pkg install --library "miguelbalboa/MFRC522" \
