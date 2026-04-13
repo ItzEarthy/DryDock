@@ -25,9 +25,9 @@ echo "--- Uploading Firmware ---"
 pio run --target upload --upload-port "$UPLOAD_PORT"
 
 echo "--- Flash Complete ---"
-echo "--- Monitoring Logs for 10 Seconds ---"
+echo "--- Monitoring Logs for 25 Seconds ---"
 
 # The '|| true' prevents the script from throwing an error when the timeout kills the monitor
-timeout 10s pio device monitor --port "$UPLOAD_PORT" --baud 115200 || true
+timeout 25s pio device monitor --port "$UPLOAD_PORT" --baud 115200 || true
 
 echo "--- Done ---"
