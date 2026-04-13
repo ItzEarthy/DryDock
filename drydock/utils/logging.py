@@ -7,7 +7,16 @@ from pathlib import Path
 
 from flask import current_app
 
-APP_START_TIME = datetime.utcnow()
+APP_START_TIME = None
+
+def set_app_start_time(dt: datetime | None = None) -> None:
+    """Set the application start time used for uptime calculations.
+
+    Call this from the application bootstrap to ensure uptime reflects when
+    the Flask app was started rather than module import time.
+    """
+    global APP_START_TIME
+    APP_START_TIME = dt or datetime.utcnow()
 
 
 class JsonLogFormatter(logging.Formatter):

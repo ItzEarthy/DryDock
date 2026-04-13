@@ -5,11 +5,10 @@
         <h1 class="text-2xl font-bold">Filament Management</h1>
         <div class="flex space-x-2">
             {% if spoolman_connected %}
-                <button class="btn-outline flex-1 md:flex-none" hx-get="/filaments/partials/filament_options" hx-target="#filament-options" hx-swap="innerHTML">Refresh Filaments</button>
-                <button class="btn-blue flex-1 md:flex-none" hx-get="/filaments/wizard/modal" hx-target="#modal-root" hx-swap="innerHTML">Open Wizard</button>
+                <button class="btn btn-outline flex-1 md:flex-none" hx-get="/filaments/partials/filament_options" hx-target="#filament-options" hx-swap="innerHTML">Refresh Filaments</button>
             {% else %}
-                <button class="btn-outline flex-1 md:flex-none" disabled>Refresh Filaments</button>
-                <button class="btn-gray flex-1 md:flex-none" disabled>Spoolman Offline</button>
+                <button class="btn btn-outline flex-1 md:flex-none" disabled>Refresh Filaments</button>
+                <button class="btn btn-gray flex-1 md:flex-none" disabled>Spoolman Offline</button>
             {% endif %}
         </div>
         <div id="filament-options" class="hidden"></div>
@@ -84,13 +83,13 @@
                         <label class="text-xs soft-text">Weight (g)</label>
                         <div class="flex gap-2 mt-1">
                             <input id="weight-input" name="weight" class="input input-dark telemetry-data flex-1" placeholder="0.00" />
-                            <button id="grab-weight-btn" type="button" class="btn-outline btn-sm">Grab Weight</button>
+                            <button id="grab-weight-btn" type="button" class="btn btn-outline btn-sm">Grab Weight</button>
                         </div>
                     </div>
 
                     <div class="flex items-center justify-end gap-2">
-                        <button id="rfid-cancel" type="button" class="btn-outline btn-sm">Cancel</button>
-                        <button id="rfid-accept" type="submit" class="btn-blue btn-sm" hx-confirm="Are you sure you want to link this RFID tag and update the spool's weight?">Accept</button>
+                        <button id="rfid-cancel" type="button" class="btn btn-outline btn-sm">Cancel</button>
+                        <button id="rfid-accept" type="submit" class="btn btn-blue btn-sm" hx-confirm="Are you sure you want to link this RFID tag and update the spool's weight?">Accept</button>
                     </div>
                 </div>
             </form>
@@ -171,7 +170,7 @@
     }
 
     // Grab live weight on demand
-    grabBtn.addEventListener('click', async function(){
+    if (grabBtn) grabBtn.addEventListener('click', async function(){
         try{
             const res = await fetch('/api/live_snapshot');
             if (!res.ok) return;
@@ -182,10 +181,11 @@
         }catch(e){}
     });
 
-    cancelBtn.addEventListener('click', function(){ hideCard(); });
+    if (cancelBtn) cancelBtn.addEventListener('click', function(){ hideCard(); });
 
     // Stop live polling when we execute a sync, because HTMX handles it
-    document.getElementById('rfid-spool-form').addEventListener('htmx:configRequest', function(){ 
+    const rfidForm = document.getElementById('rfid-spool-form');
+    if (rfidForm) rfidForm.addEventListener('htmx:configRequest', function(){ 
         stopLiveTimer(); 
     });
 
@@ -254,7 +254,7 @@
 
     // If server provided a latest UID on render, trigger the same UI flow
     try{
-        const serverUid = "{{ latest_uid|default('') }}";
+        const serverUid = {{ (latest_uid or '')|tojson }};
         const sensorOnline = {{ 'true' if sensor_connected else 'false' }};
         if (sensorOnline && serverUid && serverUid.trim() !== ''){
             const evt = new CustomEvent('rfid-scanned', { detail: { uid: serverUid } });

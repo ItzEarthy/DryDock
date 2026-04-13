@@ -21,11 +21,31 @@
     <div class="p-4 border rounded border-edge">
         <p class="text-sm font-bold mb-1">1. Tare Scale</p>
         <p class="text-xs soft-text mb-3">Remove all weight and run a tare using the latest sensor sample.</p>
-        <button hx-post="/calibration/tare" hx-target="#calibration-card" class="btn-gray w-full uppercase">Zero
-            Scale</button>
+            <div class="mb-2 text-sm soft-text">Live Raw ADC: <span id="cal-live-raw">--</span></div>
+            <button hx-post="/calibration/tare" hx-target="#calibration-card" class="btn btn-gray w-full uppercase">Zero
+                Scale</button>
         <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Offset:</span><span>{{
                 "%.3f"|format(cal_settings.tare_offset) }}</span></div>
     </div>
+
+    <script>
+    ;(function(){
+        const el = document.getElementById('cal-live-raw');
+        if (!el) return;
+        let t = null;
+        async function poll(){
+            try{
+                const res = await fetch('/api/live_snapshot');
+                if (!res.ok) return;
+                const data = await res.json();
+                const raw = data && data.raw_adc !== null && data.raw_adc !== undefined ? Number(data.raw_adc).toFixed(3) : '--';
+                el.textContent = raw;
+            }catch(e){ el.textContent='--'; }
+        }
+        poll();
+        t = setInterval(poll, 1000);
+    })();
+    </script>
 
     <div class="p-4 border rounded border-edge">
         <p class="text-sm font-bold mb-1">2. Quick Single-Point Multiplier</p>
@@ -33,7 +53,7 @@
         <form hx-post="/calibration/multiplier" hx-target="#calibration-card" class="flex gap-2">
             <input type="number" step="any" name="known_weight" placeholder="Known grams" class="input-dark flex-1"
                 required>
-            <button type="submit" class="btn-blue uppercase">Set</button>
+            <button type="submit" class="btn btn-blue uppercase">Set</button>
         </form>
         <div class="flex justify-between mt-2 text-xs mono"><span class="soft-text">Multiplier:</span><span>{{
                 "%.8f"|format(cal_settings.calibration_multiplier) }}</span></div>

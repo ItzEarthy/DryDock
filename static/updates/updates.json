@@ -1,0 +1,20 @@
+[
+  {
+    "version": "1.0.0",
+    "date": "2026-04-13",
+    "reflash_required": true,
+    "general_changes": [
+      "Version 1.0.0 release - major milestone with new features and improvements"
+    ]
+  },
+  {
+    "version": "0.0.0",
+    "date": "2026-04-1",
+    "reflash_required": false,
+    "bug_fixes": [],
+    "new_features": [],
+    "general_changes": [
+        "Version 0.0.0 initial commit with basic functionality and setup"
+    ]
+  }
+]

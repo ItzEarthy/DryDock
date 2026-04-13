@@ -5,6 +5,8 @@ from pathlib import Path
 from flask import Flask
 
 from .extensions import db, migrate
+from datetime import datetime
+from .utils.logging import set_app_start_time
 
 
 def _bootstrap_app(app: Flask) -> None:
@@ -22,6 +24,9 @@ def _bootstrap_app(app: Flask) -> None:
 def create_app(config_object: object | None = None) -> Flask:
     project_root = Path(__file__).resolve().parents[1]
     app = Flask(__name__, root_path=str(project_root))
+
+    # Record the application start time immediately after the Flask app is created
+    set_app_start_time(datetime.utcnow())
 
     # Keep defaults identical to the monolith unless overridden.
     app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///drydock.db")

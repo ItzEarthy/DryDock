@@ -99,7 +99,12 @@ def build_context(include_spools=True):
     spoolman_ok, spoolman_msg = check_spoolman(settings.spoolman_url)
 
     db_ok, db_msg = check_database_status()
-    uptime = format_uptime(datetime.utcnow() - APP_START_TIME)
+    uptime = "Unknown"
+    try:
+        if APP_START_TIME:
+            uptime = format_uptime(datetime.utcnow() - APP_START_TIME)
+    except Exception:
+        uptime = "Unknown"
 
     last_cal = settings.last_calibration_at
     calibration_due = True

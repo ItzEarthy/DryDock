@@ -5,15 +5,17 @@
     </div>
     {% endif %}
 
-    <div class="flex gap-2 items-center">
-        <input aria-label="Search spools" id="spool-search" placeholder="Search spools, material, vendor or ID" class="input-dark flex-1" />
-        <select id="spool-sort" class="input-dark" style="max-width:220px; margin-left:0.5rem;">
-            <option value="default">Sort: Default</option>
-            <option value="material-asc">Material A→Z</option>
-            <option value="remaining-desc">Remaining ↓</option>
-            <option value="remaining-asc">Remaining ↑</option>
-        </select>
-        <button id="spool-clear" class="btn-outline btn-sm" title="Clear">Clear</button>
+    <div class="flex flex-wrap gap-3 items-center justify-between p-2 rounded bg-edge/30 border border-edge">
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto flex-1 sm:flex-none justify-end">
+            <input aria-label="Search spools" id="spool-search" placeholder="Search spools, material, vendor or ID" class="input-dark flex-1 min-w-[200px]" />
+            <select id="spool-sort" class="input-dark sm:w-auto w-full">
+                <option value="default">Sort: Default</option>
+                <option value="material-asc">Material A→Z</option>
+                <option value="remaining-desc">Remaining ↓</option>
+                <option value="remaining-asc">Remaining ↑</option>
+            </select>
+            <button id="spool-clear" class="btn btn-outline btn-sm" title="Clear search and sort">Clear</button>
+        </div>
     </div>
 
     <div id="spool-list" class="space-y-3 mt-2">
@@ -38,7 +40,9 @@
             {% set spool_extra = spool.extra if spool.extra is defined and spool.extra else {} %}
             {% set rfid_uid = spool_extra.get('rfid_uid', spool_extra.get('rfid', spool.rfid_uid if spool.rfid_uid is defined else ''))|string|replace('"', '') %}
 
-            <div class="p-3 rounded border space-y-2 border-edge spool-item" data-material="{{ (material_name|lower) }}" data-remaining="{{ remaining }}" data-search="{{ (filament_name ~ ' ' ~ material_name ~ ' ' ~ vendor_name ~ ' ' ~ spool_id)|lower }}">
+            {% set loaded_in_mmu = (location and (location|string).lower().find('mmu') != -1) or (spool_extra.get('loaded_in_mmu') if spool_extra is mapping else false) %}
+            <div class="p-3 rounded border space-y-2 border-edge spool-item" data-spool-id="{{ spool_id }}" data-material="{{ (material_name|lower) }}" data-remaining="{{ remaining }}" data-search="{{ (filament_name ~ ' ' ~ material_name ~ ' ' ~ vendor_name ~ ' ' ~ spool_id)|lower }}" data-rfid="{{ rfid_uid }}" data-loaded-in-mmu="{{ 'true' if loaded_in_mmu else 'false' }}">
+                <input type="checkbox" class="spool-select hidden" aria-label="Select spool {{ spool_id }}" />
                 <div class="flex justify-between items-start gap-2">
                     <div>
                         <div class="font-semibold flex items-center gap-2">
@@ -93,10 +97,17 @@
                     </div>
                 </div>
 
+                {% set rem_val = (remaining if remaining is not none else 0) %}
+                {% set rem_class = 'text-[var(--text-primary)]' %}
+                {% if rem_val <= 20 %}
+                    {% set rem_class = 'text-red-500 font-semibold' %}
+                {% elif rem_val <= 50 %}
+                    {% set rem_class = 'text-yellow-500 font-medium' %}
+                {% endif %}
                 <div class="bg-[var(--surface-hover)] rounded p-2 mt-2">
                     <div class="flex items-center justify-between text-xs soft-text">
                         <div>Meas: <span class="mono text-[var(--text-primary)] font-medium">{{ "%.1f"|format(measured) }} g</span></div>
-                        <div>Rem: <span class="mono text-[var(--text-primary)]">{{ "%.1f"|format(remaining if remaining is not none else 0) }} g</span></div>
+                        <div>Rem: <span class="mono {{ rem_class }}">{{ "%.1f"|format(rem_val) }} g</span></div>
                         <div>Tot: <span class="mono">{{ "%.1f"|format(total if total is not none else 0) }} g</span></div>
                     </div>
                 </div>
@@ -107,33 +118,33 @@
                 </div>
                 {% endif %}
 
-                <div class="grid grid-cols-2 gap-2 pt-1 mt-2">
+                <div class="grid grid-cols-2 gap-2 pt-1 mt-2 spool-actions">
                     <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="reweigh">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
                         <input type="hidden" name="weight" value="{{ weight_grams if weight_grams is not none else measured }}">
                         <input type="hidden" name="empty_weight" value="{{ empty_weight }}">
-                        <button class="btn-outline text-xs w-full" hx-confirm="Update Spoolman with the current live weight?" title="Save live scale weight to Spoolman (subtracts empty spool automatically)">Re-weigh</button>
+                        <button class="btn btn-outline text-xs w-full" hx-confirm="Update Spoolman with the current live weight?" title="Save live scale weight to Spoolman (subtracts empty spool automatically)">Re-weigh</button>
                     </form>
                     <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="mark_used">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <button class="btn-outline text-xs w-full" hx-confirm="Set remaining filament weight to 0g?" title="Set remaining filament to 0g">Mark Used</button>
+                        <button class="btn btn-outline text-xs w-full" hx-confirm="Set remaining filament weight to 0g?" title="Set remaining filament to 0g">Mark Used</button>
                     </form>
                     <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="unlink">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <button class="btn-outline text-xs w-full" hx-confirm="Unlink the RFID tag from this spool?" title="Unlink RFID card from this spool">Unlink Tag</button>
+                        <button class="btn btn-outline text-xs w-full" hx-confirm="Unlink the RFID tag from this spool?" title="Unlink RFID card from this spool">Unlink Tag</button>
                     </form>
                     <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML">
                         <input type="hidden" name="action" value="archive">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <button class="btn-outline text-xs w-full text-[var(--color-sand)] border-[var(--color-sand)] hover:bg-[var(--color-sand)] hover:text-[#0b0e14]" hx-confirm="Archive this spool? It will be removed from the active view." title="Archive in Spoolman">Archive</button>
+                        <button class="btn btn-outline text-xs w-full text-[var(--color-sand)] border-[var(--color-sand)] hover:bg-[var(--color-sand)] hover:text-[#0b0e14]" hx-confirm="Archive this spool? It will be removed from the active view." title="Archive in Spoolman">Archive</button>
                     </form>
                     <form hx-post="/filaments/spoolman/action" hx-target="#spool-list-wrapper" hx-swap="innerHTML" class="col-span-2">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="spool_id" value="{{ spool_id }}">
-                        <button class="btn-outline text-xs w-full text-[#E72A2E] border-[#E72A2E] hover:bg-[#E72A2E] hover:text-white flex items-center justify-center" hx-confirm="Are you sure you want to permanently delete this spool from Spoolman? Consider 'Archive' instead." title="Delete from Spoolman permanently">
+                        <button class="btn btn-outline text-xs w-full text-[#E72A2E] border-[#E72A2E] hover:bg-[#E72A2E] hover:text-white flex items-center justify-center" hx-confirm="Are you sure you want to permanently delete this spool from Spoolman? Consider 'Archive' instead." title="Delete from Spoolman permanently">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                             Permanently Delete
                         </button>
@@ -200,4 +211,281 @@
         filterAndSort();
     })(document.currentScript ? document.currentScript.parentElement : document);
     </script>
+    <script>
+    (function spoolExtras(){
+        const list = document.getElementById('spool-list');
+        if (!list) return;
+
+        const compactToggle = document.getElementById('compact-toggle');
+        const mmuFilter = document.getElementById('mmu-filter');
+        const selectAll = document.getElementById('select-all');
+        const bulkArchive = document.getElementById('bulk-archive');
+        const bulkDelete = document.getElementById('bulk-delete');
+
+        function setCompact(on){
+            if (on) list.classList.add('compact-mode'); else list.classList.remove('compact-mode');
+        }
+
+        if (compactToggle) compactToggle.addEventListener('click', ()=> setCompact(!list.classList.contains('compact-mode')));
+
+        if (mmuFilter) mmuFilter.addEventListener('change', ()=>{
+            const on = mmuFilter.checked;
+            document.querySelectorAll('.spool-item').forEach(it=>{
+                if (on) it.style.display = (it.dataset.loadedInMmu === 'true') ? '' : 'none'; else it.style.display = '';
+            });
+        });
+
+        function updateBulkActionsVisibility() {
+            const hasChecked = document.querySelectorAll('.spool-select:checked').length > 0;
+            const container = document.getElementById('bulk-actions-container');
+            if (container) {
+                if (hasChecked) {
+                    container.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                }
+            }
+        }
+
+        if (selectAll) selectAll.addEventListener('change', ()=>{
+            const checked = selectAll.checked;
+            document.querySelectorAll('.spool-select').forEach(cb=>{ cb.classList.remove('hidden'); cb.checked = checked; });
+            updateBulkActionsVisibility();
+        });
+
+        // Listen for individual checkbox changes
+        document.querySelectorAll('.spool-select').forEach(cb => {
+            cb.addEventListener('change', updateBulkActionsVisibility);
+        });
+
+        async function performBulk(action){
+            const selected = Array.from(document.querySelectorAll('.spool-select:checked')).map(cb=> cb.closest('.spool-item')?.dataset?.spoolId).filter(Boolean);
+            if (!selected.length) return alert('No spools selected');
+            if (!confirm(`Perform ${action} on ${selected.length} spools?`)) return;
+            for (const id of selected){
+                try{
+                    const fd = new URLSearchParams(); fd.append('action', action); fd.append('spool_id', id);
+                    await fetch('/filaments/spoolman/action', { method: 'POST', body: fd });
+                }catch(e){ console.error(e); }
+            }
+            // refresh via htmx partial reload if wrapper exists
+            const wrapper = document.getElementById('spool-list-wrapper');
+            if (wrapper){
+                try{ const res = await fetch('/filaments/partials/spool_list'); if (res.ok){ wrapper.innerHTML = await res.text(); } else location.reload(); }
+                catch(e){ location.reload(); }
+            } else location.reload();
+        }
+
+        if (bulkArchive) bulkArchive.addEventListener('click', ()=> performBulk('archive'));
+        if (bulkDelete) bulkDelete.addEventListener('click', ()=> performBulk('remove'));
+
+        // Add small compact action toggles to items
+        document.querySelectorAll('.spool-item').forEach(item=>{
+            const menu = document.createElement('button');
+            menu.className = 'compact-menu-btn btn btn-ghost btn-sm';
+            menu.type = 'button';
+            menu.textContent = '⋯';
+            menu.title = 'Actions';
+            menu.style.marginRight = '0.5rem';
+            menu.addEventListener('click', ()=>{
+                const actions = item.querySelector('.spool-actions');
+                if (actions) actions.classList.toggle('show');
+            });
+            item.insertBefore(menu, item.firstChild);
+        });
+
+        function focusByRfid(uid){
+            if (!uid) return;
+            const clean = String(uid).replace(/^"|"$/g,'').trim();
+            const node = Array.from(document.querySelectorAll('.spool-item')).find(it=> (it.dataset.rfid||'').includes(clean) || (it.dataset.search||'').includes(clean.toLowerCase()));
+            if (node){
+                node.scrollIntoView({behavior:'smooth', block:'center'});
+                node.classList.add('spool-highlight');
+                setTimeout(()=> node.classList.remove('spool-highlight'), 3000);
+            }
+        }
+
+        try{ const params = new URLSearchParams(window.location.search); const r = params.get('rfid'); if (r) focusByRfid(r); }catch(e){}
+        document.addEventListener('rfid-scanned', (e)=>{ if (e.detail && e.detail.uid) focusByRfid(e.detail.uid); });
+    })();
+    </script>
+</div><script>\n    (function initSpoolList(root){
+        const container = root.querySelector('#spool-list');
+        if (!container) return;
+
+        const searchEl = root.querySelector('#spool-search');
+        const sortEl = root.querySelector('#spool-sort');
+        const clearBtn = root.querySelector('#spool-clear');
+        const compactToggle = root.querySelector('#compact-toggle');
+        const mmuFilter = root.querySelector('#mmu-filter');
+        const selectAll = root.querySelector('#select-all');
+        const bulkArchive = root.querySelector('#bulk-archive');
+        const bulkDelete = root.querySelector('#bulk-delete');
+
+        // Restore state from sessionStorage
+        if (searchEl && sessionStorage.getItem('dd-spool-search')) searchEl.value = sessionStorage.getItem('dd-spool-search');
+        if (sortEl && sessionStorage.getItem('dd-spool-sort')) sortEl.value = sessionStorage.getItem('dd-spool-sort');
+        if (mmuFilter && sessionStorage.getItem('dd-spool-mmu') === 'true') mmuFilter.checked = true;
+
+        function setCompact(on){
+            if (on) {
+                container.classList.add('compact-mode');
+                sessionStorage.setItem('dd-spool-compact', 'true');
+            } else {
+                container.classList.remove('compact-mode');
+                sessionStorage.setItem('dd-spool-compact', 'false');
+            }
+        }
+        
+        if (sessionStorage.getItem('dd-spool-compact') === 'true') {
+            setCompact(true);
+        }
+
+        if (compactToggle) {
+            compactToggle.addEventListener('click', ()=> setCompact(!container.classList.contains('compact-mode')));
+        }
+
+        function filterAndSort() {
+            const q = (searchEl?.value || '').trim().toLowerCase();
+            const mmuOn = mmuFilter ? mmuFilter.checked : false;
+            const items = Array.from(container.querySelectorAll('.spool-item'));
+
+            // Save state
+            if (searchEl) sessionStorage.setItem('dd-spool-search', searchEl.value);
+            if (sortEl) sessionStorage.setItem('dd-spool-sort', sortEl.value);
+            if (mmuFilter) sessionStorage.setItem('dd-spool-mmu', mmuFilter.checked);
+
+            // Filter (incorporate both search and MMU rules)
+            items.forEach(item => {
+                const text = item.getAttribute('data-search') || '';
+                const matchesSearch = (!q || text.indexOf(q) !== -1);
+                const matchesMMU = (!mmuOn || item.dataset.loadedInMmu === 'true');
+                
+                item.style.display = (matchesSearch && matchesMMU) ? '' : 'none';
+            });
+
+            // Sort
+            const mode = sortEl?.value || 'default';
+            let toSort = items.filter(i => i.style.display !== 'none');
+            if (mode === 'material-asc') {
+                toSort.sort((a,b)=> (a.dataset.material || '').localeCompare(b.dataset.material || ''));
+            } else if (mode === 'remaining-desc') {
+                toSort.sort((a,b)=> Number(b.dataset.remaining) - Number(a.dataset.remaining));
+            } else if (mode === 'remaining-asc') {
+                toSort.sort((a,b)=> Number(a.dataset.remaining) - Number(b.dataset.remaining));
+            }
+
+            // Append in sorted order (non-sorted keeps server order)
+            if (mode !== 'default') {
+                toSort.forEach(node => container.appendChild(node));
+            }
+            
+            // Re-evaluate bulk actions visibility if selection was hidden
+            updateBulkActionsVisibility();
+        }
+
+        if (searchEl) searchEl.addEventListener('input', filterAndSort);
+        if (sortEl) sortEl.addEventListener('change', filterAndSort);
+        if (mmuFilter) mmuFilter.addEventListener('change', filterAndSort);
+        
+        if (clearBtn) clearBtn.addEventListener('click', ()=>{ 
+            if (searchEl) { searchEl.value=''; sessionStorage.removeItem('dd-spool-search'); }
+            if (sortEl) { sortEl.value='default'; sessionStorage.removeItem('dd-spool-sort'); }
+            if (mmuFilter) { mmuFilter.checked = false; sessionStorage.removeItem('dd-spool-mmu'); }
+            filterAndSort(); 
+        });
+
+        function updateBulkActionsVisibility() {
+            const visibleChecked = Array.from(root.querySelectorAll('.spool-select:checked'))
+                .filter(cb => cb.closest('.spool-item')?.style.display !== 'none');
+            
+            const actionsContainer = root.querySelector('#bulk-actions-container');
+            if (actionsContainer) {
+                if (visibleChecked.length > 0) {
+                    actionsContainer.classList.remove('hidden');
+                } else {
+                    actionsContainer.classList.add('hidden');
+                }
+            }
+        }
+
+        if (selectAll) selectAll.addEventListener('change', ()=>{
+            const checked = selectAll.checked;
+            container.querySelectorAll('.spool-item').forEach(item => {
+                if (item.style.display !== 'none') {
+                    const cb = item.querySelector('.spool-select');
+                    if (cb) cb.checked = checked;
+                }
+            });
+            root.querySelectorAll('.spool-select').forEach(cb=> cb.classList.remove('hidden'));
+            updateBulkActionsVisibility();
+        });
+
+        root.querySelectorAll('.spool-select').forEach(cb => {
+            cb.addEventListener('change', updateBulkActionsVisibility);
+        });
+
+        async function performBulk(action){
+            const selected = Array.from(root.querySelectorAll('.spool-select:checked'))
+                .filter(cb => cb.closest('.spool-item')?.style.display !== 'none')
+                .map(cb=> cb.closest('.spool-item')?.dataset?.spoolId)
+                .filter(Boolean);
+                
+            if (!selected.length) return alert('No spools selected');
+            if (!confirm(`Perform ${action} on ${selected.length} spools?`)) return;
+            
+            for (const id of selected){
+                try{
+                    const fd = new URLSearchParams(); fd.append('action', action); fd.append('spool_id', id);
+                    await fetch('/filaments/spoolman/action', { method: 'POST', body: fd });
+                }catch(e){ console.error(e); }
+            }
+            
+            const wrapper = document.getElementById('spool-list-wrapper');
+            if (wrapper){
+                try{ const res = await fetch('/filaments/partials/spool_list'); if (res.ok){ wrapper.innerHTML = await res.text(); } else location.reload(); }
+                catch(e){ location.reload(); }
+            } else location.reload();
+        }
+
+        if (bulkArchive) bulkArchive.addEventListener('click', ()=> performBulk('archive'));
+        if (bulkDelete) bulkDelete.addEventListener('click', ()=> performBulk('remove'));
+
+        container.querySelectorAll('.spool-item').forEach(item=>{
+            if (item.querySelector('.compact-menu-btn')) return;
+            const menu = document.createElement('button');
+            menu.className = 'compact-menu-btn btn btn-ghost btn-sm';
+            menu.type = 'button';
+            menu.textContent = '\u22EF';
+            menu.title = 'Actions';
+            menu.style.marginRight = '0.5rem';
+            menu.addEventListener('click', ()=>{
+                const actions = item.querySelector('.spool-actions');
+                if (actions) actions.classList.toggle('show');
+            });
+            item.insertBefore(menu, item.firstChild);
+        });
+
+        function focusByRfid(uid){
+            if (!uid) return;
+            const clean = String(uid).replace(/^"|"$/g,'').trim();
+            const node = Array.from(container.querySelectorAll('.spool-item')).find(it=> (it.dataset.rfid||'').includes(clean) || (it.dataset.search||'').includes(clean.toLowerCase()));
+            if (node){
+                node.scrollIntoView({behavior:'smooth', block:'center'});
+                node.classList.add('spool-highlight');
+                setTimeout(()=> node.classList.remove('spool-highlight'), 3000);
+            }
+        }
+        
+        try{ const params = new URLSearchParams(window.location.search); const r = params.get('rfid'); if (r) focusByRfid(r); }catch(e){}
+        
+        if (!window.rfidListenerAdded) {
+            document.addEventListener('rfid-scanned', (e)=>{ if (e.detail && e.detail.uid) focusByRfid(e.detail.uid); });
+            window.rfidListenerAdded = true;
+        }
+
+        filterAndSort();
+        
+    })(document.currentScript ? document.currentScript.parentElement : document);
+</script>
 </div>

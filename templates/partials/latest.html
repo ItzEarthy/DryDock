@@ -14,19 +14,29 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {% set has_internal = (log.hum_1 is not none and log.hum_1 != 0) or (log.temp_1 is not none and log.temp_1 != 0) %}
+            {% set has_external = (log.hum_2 is not none and log.hum_2 != 0) or (log.temp_2 is not none and log.temp_2 != 0) %}
+
+            {% if has_internal %}
             <div class="p-4 border rounded border-edge">
                 <div class="text-xs soft-text mb-2 uppercase">Internal</div>
-                <div class="text-2xl mono">{{ "%.1f"|format(log.hum_1) if log.hum_1 is not none else "--" }}%</div>
-                <div class="text-sm soft-text mt-1">{{ "%.1f"|format(log.temp_1) if log.temp_1 is not none else "--"
-                    }}°C</div>
+                <div class="text-2xl mono">{{ "%.1f"|format(log.hum_1) if log.hum_1 is not none and log.hum_1 != 0 else "--" }}%</div>
+                <div class="text-sm soft-text mt-1">{{ "%.1f"|format(log.temp_1) if log.temp_1 is not none and log.temp_1 != 0 else "--" }}°C</div>
             </div>
+            {% endif %}
+
+            {% if has_external %}
             <div class="p-4 border rounded border-edge">
                 <div class="text-xs soft-text mb-2 uppercase">External</div>
-                <div class="text-2xl mono">{{ "%.1f"|format(log.hum_2) if log.hum_2 is not none else "--" }}%</div>
-                <div class="text-sm soft-text mt-1">{{ "%.1f"|format(log.temp_2) if log.temp_2 is not none else "--"
-                    }}°C</div>
+                <div class="text-2xl mono">{{ "%.1f"|format(log.hum_2) if log.hum_2 is not none and log.hum_2 != 0 else "--" }}%</div>
+                <div class="text-sm soft-text mt-1">{{ "%.1f"|format(log.temp_2) if log.temp_2 is not none and log.temp_2 != 0 else "--" }}°C</div>
             </div>
+            {% endif %}
         </div>
+
+        {% if not has_internal and not has_external %}
+        <div class="p-4 text-center soft-text border rounded border-dashed border-edge">No temperature or humidity telemetry available.</div>
+        {% endif %}
 
         <div class="p-6 border rounded text-center border-edge bg-accent-soft">
             <div class="text-sm soft-text uppercase mb-2">Live Weight</div>
@@ -37,7 +47,13 @@
 
         <div class="p-4 border rounded flex justify-between items-center border-edge">
             <div class="text-xs soft-text uppercase">Scanned RFID</div>
-            <div class="text-base mono break-all">{{ latest_uid or "Awaiting Scan" }}</div>
+            <div class="text-base mono break-all">
+                {% if latest_uid %}
+                    <a href="/filaments?rfid={{ latest_uid }}" class="text-accent-2 hover:underline">{{ latest_uid }}</a>
+                {% else %}
+                    Awaiting Scan
+                {% endif %}
+            </div>
         </div>
 
     </div>

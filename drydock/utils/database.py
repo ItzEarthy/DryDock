@@ -71,6 +71,7 @@ def ensure_schema_extensions() -> None:
         ),
         ("backup_retention_count", "backup_retention_count INTEGER NOT NULL DEFAULT 10"),
         ("last_humidity_alert_at", "last_humidity_alert_at DATETIME"),
+        ("installed_version", "installed_version VARCHAR(64) NOT NULL DEFAULT ''"),
     ]
 
     for col_name, col_ddl in app_additions:

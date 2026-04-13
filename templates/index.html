@@ -26,7 +26,7 @@
                         <option value="max">Maximum</option>
                     </select>
 
-                    <button id="zoomReset" class="btn-outline text-xs px-3 py-1.5 rounded transition-colors" title="Reset chart zoom and pan">
+                    <button id="zoomReset" class="btn btn-outline text-xs px-3 py-1.5 rounded transition-colors" title="Reset chart zoom and pan">
                         <span class="flex items-center gap-1.5">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                             Reset Zoom
@@ -55,7 +55,7 @@
                 <div id="panel-scale" class="space-y-4">
                     <div>
                         <div class="text-xs soft-text uppercase mb-1">Display Unit</div>
-                        <button id="unit-toggle" class="btn-outline text-sm">Show in kg</button>
+                        <button id="unit-toggle" class="btn btn-outline text-sm">Show in kg</button>
                     </div>
 
                     <div>
@@ -73,14 +73,14 @@
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button id="advanced-toggle-btn" type="button" class="btn-outline btn-sm"
+                            <button id="advanced-toggle-btn" type="button" class="btn btn-outline btn-sm"
                                 aria-pressed="false">Advanced</button>
                             <span class="muted-compact soft-text">Show debug values</span>
                         </div>
                     </div>
 
                     <button hx-post="/api/scale/remote_tare" hx-target="#tare-result"
-                        class="btn-gray w-full uppercase">Tare</button>
+                        class="btn btn-gray w-full uppercase">Tare</button>
                     <div id="tare-result"></div>
                 </div>
             </div>

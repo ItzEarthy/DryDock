@@ -15,7 +15,8 @@
                 <div>
                     <label class="block text-xs soft-text">Spoolman Base URL</label>
                     <input type="url" name="spoolman_url" value="{{ app_settings.spoolman_url }}" class="input-dark" required>
-                    <button type="button" class="btn-outline mt-2 text-xs" hx-post="/settings/test_spoolman" hx-include="closest form" hx-target="#spoolman-test-result">Test Connection</button>
+                    <button type="button" class="btn btn-outline mt-2 text-xs" hx-post="/settings/test_spoolman" hx-include="closest form" hx-target="#spoolman-test-result">Test Connection</button>
+                    <span id="spoolman-test-indicator" class="ml-2"></span>
                     <div id="spoolman-test-result" class="mt-2"></div>
                 </div>
 
@@ -67,7 +68,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-blue w-full uppercase">Save Configuration</button>
+                <button type="submit" class="btn btn-blue w-full uppercase">Save Configuration</button>
             </form>
             <div id="settings-result" class="mt-3"></div>
             </div>
@@ -82,20 +83,65 @@
             </div>
             <div id="panel-settings-data">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                <a href="/api/logs/download?format=csv&hours=168" class="btn-outline text-center text-sm">Export Sensor CSV</a>
-                <a href="/api/logs/download?format=json&hours=168" class="btn-outline text-center text-sm">Export Sensor JSON</a>
-                <a href="/api/logs/structured/download" class="btn-outline text-center text-sm">Download Structured Logs</a>
-                <a href="/settings/export" class="btn-outline text-center text-sm">Export Config JSON</a>
+                <a href="/api/logs/download?format=csv&hours=168" class="btn btn-outline text-center text-sm">Export Sensor CSV</a>
+                <a href="/api/logs/download?format=json&hours=168" class="btn btn-outline text-center text-sm">Export Sensor JSON</a>
+                <a href="/api/logs/structured/download" class="btn btn-outline text-center text-sm">Download Structured Logs</a>
+                <a href="/settings/export" class="btn btn-outline text-center text-sm">Export Config JSON</a>
             </div>
 
-            <form hx-post="/settings/import" hx-encoding="multipart/form-data" hx-target="#config-import-result" class="space-y-2 mb-3">
+            <form id="import-form" hx-post="/settings/import" hx-encoding="multipart/form-data" hx-target="#config-import-result" class="space-y-2 mb-3">
                 <label class="block text-xs soft-text">Import Config JSON</label>
-                <input type="file" name="config_file" accept="application/json" class="input-dark" required>
-                <button class="btn-gray w-full uppercase text-sm">Import Configuration</button>
+                <input id="config-file-input" type="file" name="config_file" accept="application/json" class="input-dark" required>
+                <button id="import-config-btn" class="btn btn-gray w-full uppercase text-sm">Import Configuration</button>
             </form>
             <div id="config-import-result" class="mb-3"></div>
 
-            <button hx-post="/settings/backup" hx-target="#backup-result" class="btn-blue w-full uppercase text-sm">Run Backup Now</button>
+            <script>
+            (function(){
+                const form = document.getElementById('import-form');
+                const fileInput = document.getElementById('config-file-input');
+                const modalRoot = document.getElementById('modal-root');
+
+                if (!form || !fileInput || !modalRoot) return;
+
+                form.addEventListener('submit', function(e){
+                    if (form.dataset.confirmed === '1') {
+                        form.dataset.confirmed = '0';
+                        return true;
+                    }
+                    e.preventDefault();
+                    const file = fileInput.files && fileInput.files[0];
+                    if (!file) return alert('Please choose a JSON file to import.');
+                    const reader = new FileReader();
+                    reader.onload = function(ev){
+                        try{
+                            const obj = JSON.parse(ev.target.result);
+                            const pretty = JSON.stringify(obj, null, 2).replace(/</g, '&lt;');
+                            modalRoot.innerHTML = `\
+                                <div class="max-w-3xl mx-auto bg-white p-4 rounded text-sm">\
+                                    <h3 class="font-bold mb-2">Import Configuration — Confirm</h3>\
+                                    <div class="border rounded p-2 mb-3"><pre style="max-height:40vh;overflow:auto">${pretty}</pre></div>\
+                                    <div class="flex gap-2 justify-end">\
+                                        <button id="import-cancel" class="btn btn-outline" type="button">Cancel</button>\
+                                        <button id="import-confirm" class="btn btn-blue" type="button">Apply</button>\
+                                    </div>\
+                                </div>`;
+                            modalRoot.classList.remove('hidden');
+
+                            document.getElementById('import-cancel').addEventListener('click', ()=>{ modalRoot.classList.add('hidden'); modalRoot.innerHTML=''; });
+                            document.getElementById('import-confirm').addEventListener('click', ()=>{
+                                modalRoot.classList.add('hidden'); modalRoot.innerHTML='';
+                                form.dataset.confirmed = '1';
+                                form.requestSubmit();
+                            });
+                        }catch(err){ alert('Selected file is not valid JSON.'); }
+                    };
+                    reader.readAsText(file);
+                });
+            })();
+            </script>
+
+            <button hx-post="/settings/backup" hx-target="#backup-result" class="btn btn-blue w-full uppercase text-sm">Run Backup Now</button>
             <div id="backup-result" class="mt-2"></div>
             </div>
         </div>
@@ -121,19 +167,24 @@
                 </div>
                 <div>
                     <label class="block text-xs soft-text">WiFi Password</label>
-                    <input type="password" name="password" class="input-dark" required>
+                    <div class="relative">
+                        <input id="wifi-password" type="password" name="password" class="input-dark pr-10" required>
+                        <button id="toggle-password" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-sm" aria-label="Toggle password visibility">
+                            <svg id="pw-eye" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs soft-text">Flask Server IP</label>
-                        <input type="text" name="pi_ip" value="192.168.0.169" class="input-dark" required>
+                        <label class="block text-xs soft-text">DryDock Server IP</label>
+                        <input type="text" name="pi_ip" value="x.x.x.x" class="input-dark" required>
                     </div>
                     <div>
-                        <label class="block text-xs soft-text">Flask Port</label>
+                        <label class="block text-xs soft-text">DryDock Server Port</label>
                         <input type="text" name="pi_port" value="5000" class="input-dark" required>
                     </div>
                 </div>
-                <button type="submit" class="btn-blue w-full uppercase">Download Full ESP32 Script</button>
+                <button type="submit" class="btn btn-blue w-full uppercase">Download Full ESP32 Script</button>
             </form>
             </div>
         </div>
@@ -161,6 +212,10 @@
                 <div class="flex justify-between text-sm pt-2 border-t border-edge">
                     <span class="soft-text">Uptime</span>
                     <span id="health-uptime" class="mono">{{ uptime }}</span>
+                </div>
+                <div class="flex justify-between text-sm pt-2">
+                    <span class="soft-text">Installed Version</span>
+                    <span id="health-version" class="mono">{{ app_settings.installed_version or 'Unknown' }}</span>
                 </div>
             </div>
         </div>
@@ -195,5 +250,33 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshHealthSettings();
     setInterval(refreshHealthSettings, 8000);
 });
+    // Password toggle
+    document.addEventListener('DOMContentLoaded', () => {
+        const toggle = document.getElementById('toggle-password');
+        const pw = document.getElementById('wifi-password');
+        if (!toggle || !pw) return;
+        const eyeSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+        const eyeOffSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a28.8 28.8 0 0 1 5.06-6.06"></path><path d="M1 1l22 22"></path></svg>';
+        toggle.addEventListener('click', () => {
+            if (pw.type === 'password') { pw.type = 'text'; toggle.innerHTML = eyeOffSvg; }
+            else { pw.type = 'password'; toggle.innerHTML = eyeSvg; }
+        });
+    });
+
+    // Spoolman test indicator updater
+    document.body.addEventListener('htmx:afterSwap', function(e){
+        try{
+            if (e.detail && e.detail.target && e.detail.target.id === 'spoolman-test-result'){
+                const el = document.getElementById('spoolman-test-indicator');
+                if (!el) return;
+                const html = e.detail.xhr && e.detail.xhr.responseText ? e.detail.xhr.responseText : '';
+                if (html.toLowerCase().includes('successful')){
+                    el.innerHTML = '<span class="dot dot-g"></span>';
+                } else {
+                    el.innerHTML = '<span class="dot dot-r"></span>';
+                }
+            }
+        }catch(_){}
+    });
 </script>
 {% endblock %}

@@ -178,7 +178,7 @@ void postTelemetry(float temp1, float hum1, float temp2, float hum2) {
 
 void setup() {
   Serial.begin(115200);
-  delay(250);
+  delay(10000);
 
   Wire.begin(I2C1_SDA, I2C1_SCL);
   Wire1.begin(I2C2_SDA, I2C2_SCL);
