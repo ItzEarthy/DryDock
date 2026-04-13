@@ -30,7 +30,11 @@ The following core components are required to build a DryDock unit:
 | 5 kg Load Cell | Measures spool weight |
 | RGB LED | Visual status indicator |
 
-Full wiring diagrams, pin assignments, and a complete bill of materials are available in the [Hardware Setup](https://github.com/ItzEarthy/DryDock/wiki/Hardware-Setup) wiki page.
+Full wiring diagrams, pin assignments, and a complete bill of materials are available in the [Hardware Setup](https://github.com/ItzEarthy/DryDock/wiki/2.-Hardware-Setup) wiki page.
+
+**Current Setup:**
+
+The current setup uses a breadbord and jumper cables. Implementaion on a PCB and 3D printed hardware is in the works
 
 ---
 
@@ -47,10 +51,10 @@ Full documentation is maintained in the **[GitHub Wiki](https://github.com/ItzEa
 | Wiki Page | Description |
 |---|---|
 | [Home](https://github.com/ItzEarthy/DryDock/wiki) | Project overview and quick-start summary |
-| [Hardware Setup](https://github.com/ItzEarthy/DryDock/wiki/Hardware-Setup) | Bill of materials, wiring diagrams, and pin assignments |
-| [Software Installation](https://github.com/ItzEarthy/DryDock/wiki/Software-Installation) | Installing the backend on a Raspberry Pi |
-| [Firmware Setup](https://github.com/ItzEarthy/DryDock/wiki/Firmware-Setup) | Generating and flashing the ESP32 firmware |
-| [Configuration](https://github.com/ItzEarthy/DryDock/wiki/Configuration) | Environment variables, settings page, and Spoolman integration |
+| [Hardware Setup](https://github.com/ItzEarthy/DryDock/wiki/2.-Hardware-Setup) | Bill of materials, wiring diagrams, and pin assignments |
+| [Software Installation](https://github.com/ItzEarthy/DryDock/wiki/3.-Software-Installation) | Installing the backend on a Raspberry Pi |
+| [Firmware Setup](https://github.com/ItzEarthy/DryDock/wiki/4.-Firmware-Setup) | Generating and flashing the ESP32 firmware |
+| [Configuration](https://github.com/ItzEarthy/DryDock/wiki/5.-Configuration) | Environment variables, settings page, and Spoolman integration |
 | [Using DryDock](https://github.com/ItzEarthy/DryDock/wiki/Using-DryDock) | Dashboard walkthrough, spool scanning workflow, and calibration |
 | [API Reference](https://github.com/ItzEarthy/DryDock/wiki/API-Reference) | Complete REST API documentation for the Flask backend |
 | [Troubleshooting](https://github.com/ItzEarthy/DryDock/wiki/Troubleshooting) | Solutions to common problems |
