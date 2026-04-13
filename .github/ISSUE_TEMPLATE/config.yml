@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Support / Troubleshooting"
+    about: "Open a support request for setup or usage help."
+    url: "https://github.com/ItzEarthy/DryDock/issues/new?template=support_request.md"
