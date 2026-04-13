@@ -18,8 +18,8 @@ if [ ! -f "platformio.ini" ]; then
     echo "Initializing PlatformIO with S3 Compatibility Fixes..."
     pio project init --board "$BOARD_ID" \
         --project-option "framework=arduino" \
-        --project-option "board_build.flash_mode = dio" \
-        --project-option "board_build.arduino.memory_type = qio_qspi"
+        --project-option "board_build.flash_mode = opi" \
+        --project-option "board_build.arduino.memory_type = opi_opi"
     
     # Re-install libraries
     pio pkg install --library "miguelbalboa/MFRC522" \
