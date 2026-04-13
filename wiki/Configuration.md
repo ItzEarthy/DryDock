@@ -170,7 +170,7 @@ If you use Klipper with Moonraker, the installer can add DryDock to Moonraker's 
 ```ini
 [update_manager drydock]
 type: git_repo
-path: /home/pi/DryDock
+path: ~/DryDock
 origin: https://github.com/ItzEarthy/DryDock.git
 primary_branch: main
 is_system_service: False
