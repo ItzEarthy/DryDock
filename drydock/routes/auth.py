@@ -101,6 +101,10 @@ def setup():
             )
             db.session.add(user)
             db.session.commit()
+            # Update the in-memory cache so subsequent requests in this
+            # redirect chain see that a user now exists and avoid a loop.
+            _HAS_USER_CACHE["at"] = datetime.utcnow()
+            _HAS_USER_CACHE["value"] = True
             session["user_id"] = user.id
             return redirect(url_for("dashboard.index"))
 

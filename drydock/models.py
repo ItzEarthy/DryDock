@@ -32,7 +32,7 @@ class CalibrationSettings(db.Model):
 
 class AppSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    spoolman_url = db.Column(db.String(255), default="http://localhost:8000")
+    spoolman_url = db.Column(db.String(255), default="http://localhost:7912")
     humidity_threshold = db.Column(db.Float, default=10.0)
     log_retention_days = db.Column(db.Integer, default=7)
     theme = db.Column(db.String(20), nullable=False, default="dark")
