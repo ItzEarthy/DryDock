@@ -221,6 +221,35 @@
         </div>
     </div>
 </div>
+        <div class="card">
+            <div class="flex justify-between items-center mb-4 section-title">
+                <h2 class="text-xl font-bold">Account</h2>
+                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-account" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+            </div>
+            <div id="panel-settings-account">
+                <form hx-post="/settings/change_password" hx-target="#password-result" class="space-y-3">
+                    <div>
+                        <label class="block text-xs soft-text">Current Password</label>
+                        <input type="password" name="current_password" class="input-dark" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs soft-text">New Password</label>
+                        <input id="new-password" type="password" name="new_password" class="input-dark" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs soft-text">Confirm New Password</label>
+                        <input id="confirm-password" type="password" name="confirm_password" class="input-dark" required>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="btn btn-blue">Change Password</button>
+                        <button type="button" id="pw-clear" class="btn btn-outline">Clear</button>
+                    </div>
+                </form>
+                <div id="password-result" class="mt-2"></div>
+            </div>
+        </div>
 {% endblock %}
 
 {% block scripts %}

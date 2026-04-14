@@ -7,6 +7,7 @@ from pathlib import Path
 from statistics import mean
 
 from flask import Blueprint, jsonify, render_template, request, send_file, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db
 from ..models import (
@@ -309,6 +310,29 @@ def render_calibration_card(message=None, is_error=False):
     context["calibration_message"] = message
     context["calibration_error"] = is_error
     return render_template("partials/calibration.html", **context)
+
+
+@dashboard_bp.post('/settings/change_password')
+@login_required
+def change_password():
+    current = (request.form.get('current_password') or '').strip()
+    new = (request.form.get('new_password') or '').strip()
+    confirm = (request.form.get('confirm_password') or '').strip()
+
+    if not current or not new:
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Provide current and new passwords.</div>", 400
+
+    if new != confirm:
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>New passwords do not match.</div>", 400
+
+    user = get_current_user()
+    if not user or not check_password_hash(user.password_hash, current):
+        return "<div class='p-3 border border-[#E72A2E] text-[#E72A2E] rounded text-sm'>Current password is incorrect.</div>", 401
+
+    user.password_hash = generate_password_hash(new)
+    db.session.commit()
+    log_event('INFO', 'password_changed', by_user=get_current_user().username)
+    return "<div class='p-3 bg-[#35AB57]/20 border border-[#35AB57] text-[#35AB57] rounded text-sm'>Password changed successfully.</div>"
 
 
 @dashboard_bp.post("/calibration/tare")
