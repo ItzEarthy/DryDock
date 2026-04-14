@@ -107,6 +107,35 @@ body {
 .card--flush { padding: 0; }
 .card__title { font-weight: 600; margin: 0 0 0.75rem 0; }
 
+.settings-page {
+  align-items: start;
+}
+
+.settings-page .card {
+  min-width: 0;
+}
+
+.settings-page .section-title {
+  gap: 0.75rem;
+}
+
+.settings-page .section-title h2 {
+  line-height: 1.2;
+}
+
+.settings-page .input-dark,
+.settings-page select,
+.settings-page textarea {
+  background: var(--bg-primary);
+}
+
+.settings-page #password-result,
+.settings-page #settings-result,
+.settings-page #config-import-result,
+.settings-page #backup-result {
+  min-height: 0;
+}
+
 /* Typography */
 .mono-text, .telemetry-data {
   font-family: var(--font-mono);

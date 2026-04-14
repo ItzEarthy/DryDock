@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<div class="settings-page grid grid-cols-1 xl:grid-cols-2 gap-6">
     <div class="space-y-6">
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
@@ -219,8 +219,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-xl font-bold">Account</h2>
@@ -228,28 +226,32 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
                 </button>
             </div>
-            <div id="panel-settings-account">
-                <form hx-post="/settings/change_password" hx-target="#password-result" class="space-y-3">
+            <div id="panel-settings-account" class="space-y-4">
+                <form hx-post="/settings/change_password" hx-target="#password-result" class="space-y-4">
                     <div>
                         <label class="block text-xs soft-text">Current Password</label>
                         <input type="password" name="current_password" class="input-dark" required>
                     </div>
-                    <div>
-                        <label class="block text-xs soft-text">New Password</label>
-                        <input id="new-password" type="password" name="new_password" class="input-dark" required>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs soft-text">New Password</label>
+                            <input id="new-password" type="password" name="new_password" class="input-dark" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs soft-text">Confirm New Password</label>
+                            <input id="confirm-password" type="password" name="confirm_password" class="input-dark" required>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs soft-text">Confirm New Password</label>
-                        <input id="confirm-password" type="password" name="confirm_password" class="input-dark" required>
-                    </div>
-                    <div class="flex gap-2">
-                        <button type="submit" class="btn btn-blue">Change Password</button>
-                        <button type="button" id="pw-clear" class="btn btn-outline">Clear</button>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <button type="submit" class="btn btn-blue sm:flex-1">Change Password</button>
+                        <button type="button" id="pw-clear" class="btn btn-outline sm:flex-1">Clear</button>
                     </div>
                 </form>
                 <div id="password-result" class="mt-2"></div>
             </div>
         </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -278,6 +280,19 @@ async function refreshHealthSettings() {
 document.addEventListener('DOMContentLoaded', () => {
     refreshHealthSettings();
     setInterval(refreshHealthSettings, 8000);
+});
+document.addEventListener('DOMContentLoaded', () => {
+    const clearButton = document.getElementById('pw-clear');
+    const currentPassword = document.querySelector('input[name="current_password"]');
+    const newPassword = document.getElementById('new-password');
+    const confirmPassword = document.getElementById('confirm-password');
+    if (!clearButton || !currentPassword || !newPassword || !confirmPassword) return;
+    clearButton.addEventListener('click', () => {
+        currentPassword.value = '';
+        newPassword.value = '';
+        confirmPassword.value = '';
+        currentPassword.focus();
+    });
 });
     // Password toggle
     document.addEventListener('DOMContentLoaded', () => {

@@ -3,10 +3,15 @@
 <div class="flex items-center justify-center min-h-[60vh]">
     <div class="card border rounded-lg max-w-md w-full">
         <h1 class="card__title text-2xl text-center uppercase">DryDock Login</h1>
+        {% if login_error %}
+        <div class="mt-4 p-3 rounded border border-[#E72A2E] bg-[#E72A2E]/10 text-[#E72A2E] text-sm">
+            {{ login_error }}
+        </div>
+        {% endif %}
         <form action="/login" method="POST" class="space-y-4 mt-4">
             <div>
                 <label class="block text-sm small-muted">Username</label>
-                <input type="text" name="username" class="input" required>
+                <input type="text" name="username" value="{{ username or '' }}" class="input" required>
             </div>
             <div>
                 <label class="block text-sm small-muted">Password</label>

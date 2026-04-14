@@ -120,8 +120,8 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             session["user_id"] = user.id
             return redirect(url_for("dashboard.index"))
-        return "Invalid credentials", 401
-    return render_template("login.html")
+        return render_template("login.html", login_error="Invalid credentials", username=username), 401
+    return render_template("login.html", username="")
 
 
 @auth_bp.route("/logout")
