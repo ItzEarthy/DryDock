@@ -191,42 +191,57 @@
         }
         const data = await res.json();
 
-        const parseTimestamp = (value) => {
-            if (value === null || value === undefined || value === "") return null;
-            if (typeof value === "number") return value;
-            const text = String(value);
-            const normalized = /(Z|[+-]\d\d:\d\d)$/.test(text) ? text : `${text}Z`;
-            const parsed = new Date(normalized).getTime();
-            return Number.isFinite(parsed) ? parsed : null;
-        };
-
         const series = data.series || {};
         const hum1 = Array.isArray(series.hum_1) ? series.hum_1 : [];
         const hum2 = Array.isArray(series.hum_2) ? series.hum_2 : [];
-        const temp1 = Array.isArray(series.temp_1) ? series.temp_1 : [];
-        const temp2 = Array.isArray(series.temp_2) ? series.temp_2 : [];
         const anomalyPoints = Array.isArray(series.anomalies) ? series.anomalies : [];
         const thresholdValue = Number(data.threshold ?? 10);
-
-        const delta = hum2.map((point, i) => {
-            const left = hum1[i];
-            const right = point;
-            if (!left || !right || left.y === null || left.y === undefined || right.y === null || right.y === undefined) return null;
-            return {
-                x: right.x,
-                y: Number(right.y) - Number(left.y)
-            };
-        });
-
-        const threshold = hum1.map((point) => {
-            if (!point || point.x === null || point.x === undefined) return null;
-            return { x: point.x, y: thresholdValue };
-        });
 
         const formatPointLabel = (value) => {
             const dt = new Date(value);
             return dt.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
         };
+
+        const labels = [];
+        const internalHumidity = [];
+        const externalHumidity = [];
+        const delta = [];
+        const threshold = [];
+
+        const pointCount = Math.max(hum1.length, hum2.length);
+        for (let i = 0; i < pointCount; i += 1) {
+            const left = hum1[i];
+            const right = hum2[i];
+            if (left && left.y === null) {
+                labels.push("");
+                internalHumidity.push(null);
+                externalHumidity.push(null);
+                delta.push(null);
+                threshold.push(null);
+                continue;
+            }
+
+            const labelSource = (left && left.x !== undefined && left.x !== null) ? left.x : (right && right.x !== undefined && right.x !== null ? right.x : null);
+            labels.push(labelSource === null ? "" : formatPointLabel(labelSource));
+
+            const leftValue = left && left.y !== undefined ? left.y : null;
+            const rightValue = right && right.y !== undefined ? right.y : null;
+            internalHumidity.push(leftValue);
+            externalHumidity.push(rightValue);
+
+            if (leftValue === null || rightValue === null) {
+                delta.push(null);
+            } else {
+                delta.push(Number(rightValue) - Number(leftValue));
+            }
+
+            threshold.push(thresholdValue);
+        }
+
+        const anomalyScatter = anomalyPoints.map((point) => ({
+            x: formatPointLabel(point.x),
+            y: point.y
+        }));
 
         const palette = {
             internal: cssVar("--ok") || "#3cb371",
@@ -243,15 +258,16 @@
         envChart = new Chart(document.getElementById("envChart").getContext("2d"), {
             type: "line",
             data: {
+                labels,
                 datasets: [
-                    { label: "Internal Hum %", data: hum1, borderColor: palette.internal, pointRadius: 0, tension: 0.18, spanGaps: false, parsing: false },
-                    { label: "External Hum %", data: hum2, borderColor: palette.external, pointRadius: 0, tension: 0.18, spanGaps: false, parsing: false },
-                    { label: "Humidity Delta %", data: delta, borderColor: palette.delta, borderDash: [7, 5], pointRadius: 0, tension: 0.15, spanGaps: false, parsing: false },
-                    { label: "Threshold %", data: threshold, borderColor: palette.threshold, borderDash: [3, 4], pointRadius: 0, tension: 0, spanGaps: false, parsing: false },
+                    { label: "Internal Hum %", data: internalHumidity, borderColor: palette.internal, pointRadius: 0, tension: 0.18, spanGaps: false },
+                    { label: "External Hum %", data: externalHumidity, borderColor: palette.external, pointRadius: 0, tension: 0.18, spanGaps: false },
+                    { label: "Humidity Delta %", data: delta, borderColor: palette.delta, borderDash: [7, 5], pointRadius: 0, tension: 0.15, spanGaps: false },
+                    { label: "Threshold %", data: threshold, borderColor: palette.threshold, borderDash: [3, 4], pointRadius: 0, tension: 0, spanGaps: false },
                     {
                         type: "scatter",
                         label: "Threshold Breach",
-                        data: anomalyPoints,
+                        data: anomalyScatter,
                         pointRadius: 4,
                         pointHoverRadius: 5,
                         showLine: false,
@@ -266,20 +282,7 @@
                 interaction: { mode: "index", intersect: false },
                 scales: {
                     y: { grid: { color: palette.grid }, ticks: { color: palette.text } },
-                    x: {
-                        type: "linear",
-                        grid: { color: palette.grid },
-                        ticks: {
-                            color: palette.text,
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 10,
-                            callback: (value) => {
-                                const parsed = parseTimestamp(value);
-                                return parsed === null ? "" : formatPointLabel(parsed);
-                            }
-                        }
-                    },
+                    x: { grid: { color: palette.grid }, ticks: { color: palette.text, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
                 },
                 plugins: {
                     legend: { labels: { color: palette.text } },
