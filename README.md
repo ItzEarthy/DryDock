@@ -2,6 +2,8 @@
 
 **Smart filament storage and inventory management for 3D printing.**
 
+<img width="50%" height="587" alt="image" src="https://github.com/user-attachments/assets/1a7363a9-2371-4622-832a-392946b3dc50" />
+
 DryDock is a web dashboard to give you real-time visibility into your filament supply and dry box environment. It helps you track remaining filament weight by spool, monitors the temperature and humidity inside your dry storage. It integrates seamlessly with [Spoolman](https://github.com/Donkie/Spoolman#integration-status) and [Klipper](https://github.com/klipper3d/klipper)/[Moonraker](https://github.com/arksine/moonraker)
 
 ---
@@ -21,6 +23,11 @@ DryDock is a web dashboard to give you real-time visibility into your filament s
 
 The following core components are required to build a DryDock unit:
 
+- Instance of Spoolman running somewhere
+- Debian baised computer running Klipper (RPi)
+
+### Hardware
+
 | Component | Purpose |
 |---|---|
 | ESP32 (S3 recommended) | Main microcontroller; reads sensors and reports data over Wi-Fi |
@@ -29,12 +36,13 @@ The following core components are required to build a DryDock unit:
 | MFRC522 | 13.56 MHz RFID/NFC reader for spool identification |
 | 5 kg Load Cell | Measures spool weight |
 | RGB LED | Visual status indicator |
+| Flow | [ESP32 + Sensors] --(Wi-Fi/JSON)--> [DryDock Web Server] <---> [Spoolman / Klipper]|
 
 Full wiring diagrams, pin assignments, and a complete bill of materials are available in the [Hardware Setup](https://github.com/ItzEarthy/DryDock/wiki/2.-Hardware-Setup) wiki page.
 
 **Current Setup:**
 
-The current setup uses a breadbord and jumper cables. Implementaion on a PCB and 3D printed hardware is in the works
+The current setup uses a breadboard and jumper cables. Implementation on a PCB and 3D printed hardware is in the works
 
 ---
 
@@ -55,9 +63,9 @@ Full documentation is maintained in the **[GitHub Wiki](https://github.com/ItzEa
 | [Software Installation](https://github.com/ItzEarthy/DryDock/wiki/3.-Software-Installation) | Installing the backend on a Raspberry Pi |
 | [Firmware Setup](https://github.com/ItzEarthy/DryDock/wiki/4.-Firmware-Setup) | Generating and flashing the ESP32 firmware |
 | [Configuration](https://github.com/ItzEarthy/DryDock/wiki/5.-Configuration) | Environment variables, settings page, and Spoolman integration |
-| [Using DryDock](https://github.com/ItzEarthy/DryDock/wiki/Using-DryDock) | Dashboard walkthrough, spool scanning workflow, and calibration |
-| [API Reference](https://github.com/ItzEarthy/DryDock/wiki/API-Reference) | Complete REST API documentation for the Flask backend |
-| [Troubleshooting](https://github.com/ItzEarthy/DryDock/wiki/Troubleshooting) | Solutions to common problems |
+| [Using DryDock](https://github.com/ItzEarthy/DryDock/wiki/6.-Using-DryDock) | Dashboard walkthrough, spool scanning workflow, and calibration |
+| [API Reference](https://github.com/ItzEarthy/DryDock/wiki/7.-API-Reference) | Complete REST API documentation for the Flask backend |
+| [Troubleshooting](https://github.com/ItzEarthy/DryDock/wiki/8.-Troubleshooting) | Solutions to common problems |
 
 ---
 
