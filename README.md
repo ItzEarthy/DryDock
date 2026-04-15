@@ -31,7 +31,7 @@ DryDock is a web dashboard that gives you real-time visibility into your filamen
   An MFRC522 reader scans 13.56 MHz NFC tags attached to spools, so DryDock knows exactly which spool is being weighed—no manual selection needed.
 
 - **Spoolman integration**  
-  After each scan-and-weigh cycle, DryDock can automatically update remaining weight in your Spoolman database over the local network.
+  After each scan-and-weigh cycle, DryDock can automatically update the remaining weight in your Spoolman database over the local network.
 
   <img width="50%" height="761" alt="image" src="https://github.com/user-attachments/assets/84511037-312d-45ba-86b2-ad547beb3129" />
 
