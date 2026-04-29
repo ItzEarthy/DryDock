@@ -1,7 +1,24 @@
 [
   {
-    "version": "0.1.0",
-    "date": "2026-04-14",
+    "version": "1.1.0",
+    "date": "2026-04-01",
+    "reflash_required": false,
+    "bug_fixes": [
+      "Fixed anomaly chart incorrectly highlighting data based on the humidity delta instead of absolute internal humidity."
+    ],
+    "new_features": [
+      "Predictive Desiccant Saturation: Calculates internal humidity climb rate to estimate hours until silica failure.",
+      "Added a live 'Time to Saturation' warning indicator to the main dashboard.",
+      "Added 'Predictive Warning Window' setting to configuration to adjust how early alerts trigger."
+    ],
+    "general_changes": [
+      "Replaced 'Humidity Delta' alert logic with an 'Absolute Internal Humidity' threshold to prevent false positives in dry rooms and false negatives in humid rooms.",
+      "Removed the delta line from the Environmental History chart for better clarity."
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-04-13",
     "reflash_required": true,
     "general_changes": [
       "Version 0.1.0 Beta release - major milestone with new features and improvements. Expect frequent updates."
@@ -14,7 +31,7 @@
     "bug_fixes": [],
     "new_features": [],
     "general_changes": [
-        "Version 0.0.0 initial commit with basic functionality and setup"
+      "Version 0.0.0 initial commit with basic functionality and setup"
     ]
   }
 ]

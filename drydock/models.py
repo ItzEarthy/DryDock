@@ -45,6 +45,7 @@ class AppSettings(db.Model):
     backup_retention_count = db.Column(db.Integer, nullable=False, default=10)
     last_humidity_alert_at = db.Column(db.DateTime, nullable=True)
     installed_version = db.Column(db.String(64), nullable=False, default="")
+    predictive_warning_hours = db.Column(db.Integer, nullable=False, default=72)
 
 
 class SpoolmanSyncLog(db.Model):
