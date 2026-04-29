@@ -31,10 +31,17 @@ def create_app(config_object: object | None = None) -> Flask:
     # Keep defaults identical to the monolith unless overridden.
     app.config.setdefault("SQLALCHEMY_DATABASE_URI", "sqlite:///drydock.db")
     app.config.setdefault("SQLALCHEMY_TRACK_MODIFICATIONS", False)
-    # Flask sets SECRET_KEY=None by default, so setdefault() won't override it.
-    # Mirror the monolith's always-present secret key unless explicitly set.
+    
+    # Enforce secure session cookies
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
+    app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
+    # Create a random secret key if not configured, or load it from a file
     if not app.config.get("SECRET_KEY"):
-        app.config["SECRET_KEY"] = "drydock_secure_key_123"
+        secret_file = project_root / ".flask_secret"
+        if not secret_file.exists():
+            import secrets
+            secret_file.write_text(secrets.token_hex(32))
+        app.config["SECRET_KEY"] = secret_file.read_text().strip()
 
     if config_object is not None:
         app.config.from_object(config_object)

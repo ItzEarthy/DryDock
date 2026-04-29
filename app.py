@@ -16,7 +16,7 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    debug_mode = True
+    debug_mode = os.environ.get("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
 
     # Mirror the original behavior: only start the scheduler in the reloader's
     # "main" process.

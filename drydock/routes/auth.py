@@ -114,6 +114,9 @@ def setup():
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        # Basic anti-bruteforce delay
+        time.sleep(1.0)
+        
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password")
         user = User.query.filter_by(username=username).first()
