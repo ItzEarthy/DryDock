@@ -13,6 +13,10 @@
             <div class="text-2xl mono">{{ "%.1f"|format(hum_delta) if hum_delta is not none else "--" }}% &Delta;</div>
         </div>
 
+        <div id="predictive-humidity-warning" class="hidden mt-2 p-2 border border-[#E72A2E] text-[#E72A2E] bg-[#E72A2E]/10 rounded text-xs font-bold flex items-center gap-2">
+            ⚠️ <span id="predictive-text"></span>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {% set has_internal = (log.hum_1 is not none and log.hum_1 != 0) or (log.temp_1 is not none and log.temp_1 != 0) %}
             {% set has_external = (log.hum_2 is not none and log.hum_2 != 0) or (log.temp_2 is not none and log.temp_2 != 0) %}

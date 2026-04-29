@@ -113,10 +113,9 @@ def _build_history_payload(points, aggregation, hours, settings, calibration):
         series["temp_2"].append({"x": ts_ms, "y": t2})
         series["weight"].append({"x": ts_ms, "y": weight_value})
 
-        if h1 is not None and h2 is not None:
-            delta = h2 - h1
-            if delta < settings.humidity_threshold:
-                anomaly = {"x": ts_ms, "y": delta}
+        if h1 is not None:
+            if h1 > settings.humidity_threshold:
+                anomaly = {"x": ts_ms, "y": h1}
                 anomalies.append(anomaly)
                 series["anomalies"].append(anomaly)
 
@@ -226,7 +225,6 @@ def weight_stability_api():
         }
     )
 
-
 @api_bp.get("/api/live_snapshot")
 def live_snapshot_api():
     latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
@@ -239,26 +237,30 @@ def live_snapshot_api():
     )
 
     if not latest:
-        return jsonify(
-            {
-                "ok": False,
-                "weight_grams": 0.0,
-                "raw_adc": None,
-                "tare_offset": calibration.tare_offset,
-                "rfid_uid": latest_uid_row.rfid_uid if latest_uid_row else "",
-                "timestamp": None,
-            }
-        )
+        return jsonify({"ok": False, "timestamp": None})
 
-    # Consider the ESP32 "connected" only if latest telemetry is recent
     sensor_age = (datetime.utcnow() - latest.timestamp).total_seconds()
     esp_ok = sensor_age < 180
 
     weight = calculate_weight_grams(latest.raw_adc, latest.temp_1, calibration, settings)
-    if weight is None:
+    if weight is None or abs(weight) <= AUTO_ZERO_GRAMS:
         weight = 0.0
-    if abs(weight) <= AUTO_ZERO_GRAMS:
-        weight = 0.0
+
+    hours_remaining = None
+    if esp_ok and latest.hum_1 is not None:
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        oldest_in_window = SensorLog.query.filter(
+            SensorLog.timestamp >= cutoff, 
+            SensorLog.hum_1.isnot(None)
+        ).order_by(SensorLog.timestamp.asc()).first()
+        
+        if oldest_in_window:
+            time_delta_hours = (latest.timestamp - oldest_in_window.timestamp).total_seconds() / 3600.0
+            if time_delta_hours >= 2.0:
+                hum_delta = latest.hum_1 - oldest_in_window.hum_1
+                rate_per_hour = hum_delta / time_delta_hours
+                if rate_per_hour > 0.05:
+                    hours_remaining = (settings.humidity_threshold - latest.hum_1) / rate_per_hour
 
     return jsonify(
         {
@@ -268,6 +270,8 @@ def live_snapshot_api():
             "tare_offset": round(calibration.tare_offset, 3),
             "rfid_uid": latest_uid_row.rfid_uid if latest_uid_row else "",
             "timestamp": _utc_iso(latest.timestamp),
+            # NEW FIELD FOR FRONTEND:
+            "hours_remaining": round(hours_remaining, 1) if hours_remaining and hours_remaining > 0 else None,
         }
     )
 

@@ -31,33 +31,62 @@ def prune_old_logs(app):
 def monitor_humidity_thresholds(app):
     with app.app_context():
         settings = get_or_create(AppSettings)
-        latest = SensorLog.query.order_by(SensorLog.timestamp.desc()).first()
-        if not latest or latest.hum_1 is None or latest.hum_2 is None:
-            return
+        
+        
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        from .models import SensorLog
+        recent_logs = SensorLog.query.filter(
+            SensorLog.timestamp >= cutoff, 
+            SensorLog.hum_1.isnot(None)
+        ).order_by(SensorLog.timestamp.asc()).all()
 
-        hum_delta = latest.hum_2 - latest.hum_1
-        if hum_delta >= settings.humidity_threshold:
-            return
+        if not recent_logs or len(recent_logs) < 10:
+            return  
 
+        latest = recent_logs[-1]
+        first = recent_logs[0]
+
+        
         recent_alert = settings.last_humidity_alert_at
-        if recent_alert and (datetime.utcnow() - recent_alert) < timedelta(minutes=30):
+        if recent_alert and (datetime.utcnow() - recent_alert) < timedelta(hours=12):
             return
 
-        message = (
-            f"DryDock humidity alert: delta={hum_delta:.2f}% is below threshold "
-            f"{settings.humidity_threshold:.2f}%"
-        )
-        settings.last_humidity_alert_at = datetime.utcnow()
         from .extensions import db
+        
+        if latest.hum_1 >= settings.humidity_threshold:
+            settings.last_humidity_alert_at = datetime.utcnow()
+            db.session.commit()
+            log_event(
+                "WARNING",
+                "humidity_critical_alert",
+                current_hum=latest.hum_1,
+                threshold=settings.humidity_threshold,
+                message="Drybox humidity has breached the safe threshold!"
+            )
+            return
 
-        db.session.commit()
-        log_event(
-            "INFO",
-            "humidity_alert_triggered",
-            delta=hum_delta,
-            threshold=settings.humidity_threshold,
-        )
+        time_delta_hours = (latest.timestamp - first.timestamp).total_seconds() / 3600.0
+        if time_delta_hours < 2.0:
+            return
 
+        hum_delta = latest.hum_1 - first.hum_1
+        rate_per_hour = hum_delta / time_delta_hours
+
+        
+        if rate_per_hour > 0.05:
+            hours_remaining = (settings.humidity_threshold - latest.hum_1) / rate_per_hour
+
+            if hours_remaining <= settings.predictive_warning_hours:
+                settings.last_humidity_alert_at = datetime.utcnow()
+                db.session.commit()
+                log_event(
+                    "INFO",
+                    "silica_degradation_warning",
+                    current_hum=latest.hum_1,
+                    rate_per_hour=rate_per_hour,
+                    predicted_hours_left=round(hours_remaining, 1),
+                    message=f"Silica degrading. Predicted to breach {settings.humidity_threshold}% in {int(hours_remaining)} hours."
+                )
 
 def run_scheduled_backups(app):
     with app.app_context():

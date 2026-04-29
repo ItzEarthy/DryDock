@@ -2,89 +2,114 @@
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-6">
 
-        <div hx-get="/partials/latest" hx-trigger="load, every 8s" hx-swap="innerHTML"></div>
+    <div hx-get="/partials/latest" hx-trigger="load, every 8s" hx-swap="innerHTML"></div>
 
-        <div class="card">
-            <div class="flex justify-between items-center mb-4 section-title">
-                <h2 class="text-xl font-bold">Environmental History</h2>
-                <button type="button" class="p-1 rounded text-[var(--muted)] hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-history" title="Collapse">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+    <div class="card">
+        <div class="flex justify-between items-center mb-4 section-title">
+            <h2 class="text-xl font-bold">Environmental History</h2>
+            <button type="button"
+                class="p-1 rounded text-[var(--muted)] hover:bg-[var(--bg-surface-hover)] transition-colors"
+                data-collapse-target="panel-history" title="Collapse">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="transition-transform duration-200">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+            </button>
+        </div>
+        <div id="panel-history">
+            <div class="flex flex-wrap gap-3 mb-4 items-center">
+                <div
+                    class="inline-flex rounded border border-[var(--border-color)] bg-[var(--bg-surface)] overflow-hidden">
+                    <button
+                        class="px-3 py-1.5 text-xs font-semibold border-r border-[var(--border-color)] range-btn transition-colors"
+                        data-range="1h">1 Hour</button>
+                    <button
+                        class="px-3 py-1.5 text-xs font-semibold border-r border-[var(--border-color)] range-btn transition-colors"
+                        data-range="24h">24 Hours</button>
+                    <button class="px-3 py-1.5 text-xs font-semibold range-btn transition-colors" data-range="7d">7
+                        Days</button>
+                </div>
+
+                <select id="aggSelect"
+                    class="input-dark text-xs !w-auto !py-1.5 !px-3 !bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--accent)]">
+                    <option value="raw">Raw</option>
+                    <option value="avg" selected>Average</option>
+                    <option value="min">Minimum</option>
+                    <option value="max">Maximum</option>
+                </select>
+
+                <button id="zoomReset" class="btn btn-outline text-xs px-3 py-1.5 rounded transition-colors"
+                    title="Reset chart zoom and pan">
+                    <span class="flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 3 21 3 21 9" />
+                            <polyline points="9 21 3 21 3 15" />
+                            <line x1="21" y1="3" x2="14" y2="10" />
+                            <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                        Reset Zoom
+                    </span>
                 </button>
             </div>
-            <div id="panel-history">
-                <div class="flex flex-wrap gap-3 mb-4 items-center">
-                    <div class="inline-flex rounded border border-[var(--border-color)] bg-[var(--bg-surface)] overflow-hidden">
-                        <button class="px-3 py-1.5 text-xs font-semibold border-r border-[var(--border-color)] range-btn transition-colors" data-range="1h">1 Hour</button>
-                        <button class="px-3 py-1.5 text-xs font-semibold border-r border-[var(--border-color)] range-btn transition-colors" data-range="24h">24 Hours</button>
-                        <button class="px-3 py-1.5 text-xs font-semibold range-btn transition-colors" data-range="7d">7 Days</button>
-                    </div>
 
-                    <select id="aggSelect" class="input-dark text-xs !w-auto !py-1.5 !px-3 !bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--accent)]">
-                        <option value="raw">Raw</option>
-                        <option value="avg" selected>Average</option>
-                        <option value="min">Minimum</option>
-                        <option value="max">Maximum</option>
-                    </select>
-
-                    <button id="zoomReset" class="btn btn-outline text-xs px-3 py-1.5 rounded transition-colors" title="Reset chart zoom and pan">
-                        <span class="flex items-center gap-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                            Reset Zoom
-                        </span>
-                    </button>
-                </div>
-
-                <div class="text-xs soft-text mb-3">
-                    Breaches where humidity delta is below threshold are highlighted as red markers.
-                </div>
-                <div class="relative w-full h-64 sm:h-72 md:h-96">
-                    <canvas id="envChart"></canvas>
-                </div>
+            <div class="text-xs soft-text mb-3">
+                Breaches where internal humidity exceeds the danger threshold are highlighted as red markers.
+            </div>
+            <div class="relative w-full h-64 sm:h-72 md:h-96">
+                <canvas id="envChart"></canvas>
             </div>
         </div>
+    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="card space-y-4">
-                <div class="flex justify-between items-center section-title">
-                    <h2 class="text-lg font-bold">Scale Controls</h2>
-                    <button type="button" class="p-1 rounded text-[var(--muted)] hover:bg-[var(--bg-surface-hover)] transition-colors"
-                        data-collapse-target="panel-scale" title="Collapse">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                    </button>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card space-y-4">
+            <div class="flex justify-between items-center section-title">
+                <h2 class="text-lg font-bold">Scale Controls</h2>
+                <button type="button"
+                    class="p-1 rounded text-[var(--muted)] hover:bg-[var(--bg-surface-hover)] transition-colors"
+                    data-collapse-target="panel-scale" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="transition-transform duration-200">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <div id="panel-scale" class="space-y-4">
+                <div>
+                    <div class="text-xs soft-text uppercase mb-1">Display Unit</div>
+                    <button id="unit-toggle" class="btn btn-outline text-sm">Show in kg</button>
                 </div>
-                <div id="panel-scale" class="space-y-4">
-                    <div>
-                        <div class="text-xs soft-text uppercase mb-1">Display Unit</div>
-                        <button id="unit-toggle" class="btn btn-outline text-sm">Show in kg</button>
+
+                <div>
+                    <div class="text-xs soft-text uppercase mb-1">Current Weight</div>
+                    <div id="scale-value" class="text-4xl mono font-bold">{{ "%.2f"|format(stability.ema_weight if
+                        stability.ema_weight is not none else (weight_grams if weight_grams is not none else 0)) }}
+                        g</div>
+                    <div class="muted-compact soft-text mt-1">Auto-zero is active when near empty scale.</div>
+                    <div class="advanced">
+                        <div class="text-xs soft-text mt-1 mono">Raw ADC: <span id="raw-adc">{{
+                                '%.3f'|format(log.raw_adc) if log and log.raw_adc is not none else '--' }}</span>
+                        </div>
+                        <div class="text-xs soft-text mt-1 mono">Tare Offset: <span id="tare-offset">{{
+                                '%.3f'|format(cal_settings.tare_offset) }}</span></div>
                     </div>
 
-                    <div>
-                        <div class="text-xs soft-text uppercase mb-1">Current Weight</div>
-                        <div id="scale-value" class="text-4xl mono font-bold">{{ "%.2f"|format(stability.ema_weight if
-                            stability.ema_weight is not none else (weight_grams if weight_grams is not none else 0)) }}
-                            g</div>
-                        <div class="muted-compact soft-text mt-1">Auto-zero is active when near empty scale.</div>
-                        <div class="advanced">
-                            <div class="text-xs soft-text mt-1 mono">Raw ADC: <span id="raw-adc">{{
-                                    '%.3f'|format(log.raw_adc) if log and log.raw_adc is not none else '--' }}</span>
-                            </div>
-                            <div class="text-xs soft-text mt-1 mono">Tare Offset: <span id="tare-offset">{{
-                                    '%.3f'|format(cal_settings.tare_offset) }}</span></div>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <button id="advanced-toggle-btn" type="button" class="btn btn-outline btn-sm"
-                                aria-pressed="false">Advanced</button>
-                            <span class="muted-compact soft-text">Show debug values</span>
-                        </div>
+                    <div class="flex items-center gap-2">
+                        <button id="advanced-toggle-btn" type="button" class="btn btn-outline btn-sm"
+                            aria-pressed="false">Advanced</button>
+                        <span class="muted-compact soft-text">Show debug values</span>
                     </div>
-
-                    <button hx-post="/api/scale/remote_tare" hx-target="#tare-result"
-                        class="btn btn-gray w-full uppercase">Tare</button>
-                    <div id="tare-result"></div>
                 </div>
+
+                <button hx-post="/api/scale/remote_tare" hx-target="#tare-result"
+                    class="btn btn-gray w-full uppercase">Tare</button>
+                <div id="tare-result"></div>
             </div>
         </div>
+    </div>
 </div>
 
 <div id="weight-seed"
@@ -153,6 +178,18 @@
             const tareEl = document.getElementById("tare-offset");
             if (rawEl) rawEl.textContent = data.raw_adc === null || data.raw_adc === undefined ? "--" : Number(data.raw_adc).toFixed(3);
             if (tareEl) tareEl.textContent = data.tare_offset === null || data.tare_offset === undefined ? "--" : Number(data.tare_offset).toFixed(3);
+
+            const warningEl = document.getElementById('predictive-humidity-warning');
+            const textEl = document.getElementById('predictive-text');
+
+            if (warningEl && textEl) {
+                if (data.hours_remaining !== null) {
+                    textEl.innerText = `Silica degrading. Est. ${data.hours_remaining} hours until threshold reached.`;
+                    warningEl.classList.remove('hidden');
+                } else {
+                    warningEl.classList.add('hidden');
+                }
+            }
         } catch (_) {
             // Ignore transient snapshot fetch errors.
         }
@@ -205,21 +242,12 @@
         const labels = [];
         const internalHumidity = [];
         const externalHumidity = [];
-        const delta = [];
         const threshold = [];
 
         const pointCount = Math.max(hum1.length, hum2.length);
         for (let i = 0; i < pointCount; i += 1) {
             const left = hum1[i];
             const right = hum2[i];
-            if (left && left.y === null) {
-                labels.push("");
-                internalHumidity.push(null);
-                externalHumidity.push(null);
-                delta.push(null);
-                threshold.push(null);
-                continue;
-            }
 
             const labelSource = (left && left.x !== undefined && left.x !== null) ? left.x : (right && right.x !== undefined && right.x !== null ? right.x : null);
             labels.push(labelSource === null ? "" : formatPointLabel(labelSource));
@@ -228,12 +256,6 @@
             const rightValue = right && right.y !== undefined ? right.y : null;
             internalHumidity.push(leftValue);
             externalHumidity.push(rightValue);
-
-            if (leftValue === null || rightValue === null) {
-                delta.push(null);
-            } else {
-                delta.push(Number(rightValue) - Number(leftValue));
-            }
 
             threshold.push(thresholdValue);
         }
@@ -262,7 +284,6 @@
                 datasets: [
                     { label: "Internal Hum %", data: internalHumidity, borderColor: palette.internal, pointRadius: 0, tension: 0.18, spanGaps: false },
                     { label: "External Hum %", data: externalHumidity, borderColor: palette.external, pointRadius: 0, tension: 0.18, spanGaps: false },
-                    { label: "Humidity Delta %", data: delta, borderColor: palette.delta, borderDash: [7, 5], pointRadius: 0, tension: 0.15, spanGaps: false },
                     { label: "Threshold %", data: threshold, borderColor: palette.threshold, borderDash: [3, 4], pointRadius: 0, tension: 0, spanGaps: false },
                     {
                         type: "scatter",

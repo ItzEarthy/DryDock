@@ -5,119 +5,153 @@
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-2xl font-bold">Configuration</h2>
-                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-config" title="Collapse">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                <button type="button"
+                    class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors"
+                    data-collapse-target="panel-settings-config" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="transition-transform duration-200">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
                 </button>
             </div>
             <div id="panel-settings-config">
 
-            <form hx-post="/settings" hx-target="#settings-result" class="space-y-4">
-                <div>
-                    <label class="block text-xs soft-text">Spoolman Base URL</label>
-                    <input type="url" name="spoolman_url" value="{{ app_settings.spoolman_url }}" class="input-dark" required>
-                    <button type="button" class="btn btn-outline mt-2 text-xs" hx-post="/settings/test_spoolman" hx-include="closest form" hx-target="#spoolman-test-result">Test Connection</button>
-                    <span id="spoolman-test-indicator" class="ml-2"></span>
-                    <div id="spoolman-test-result" class="mt-2"></div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <form hx-post="/settings" hx-target="#settings-result" class="space-y-4">
                     <div>
-                        <label class="block text-xs soft-text">Desiccant Delta Threshold (%)</label>
-                        <input type="number" step="0.1" name="humidity_threshold" value="{{ app_settings.humidity_threshold }}" class="input-dark">
+                        <label class="block text-xs soft-text">Spoolman Base URL</label>
+                        <input type="url" name="spoolman_url" value="{{ app_settings.spoolman_url }}" class="input-dark"
+                            required>
+                        <button type="button" class="btn btn-outline mt-2 text-xs" hx-post="/settings/test_spoolman"
+                            hx-include="closest form" hx-target="#spoolman-test-result">Test Connection</button>
+                        <span id="spoolman-test-indicator" class="ml-2"></span>
+                        <div id="spoolman-test-result" class="mt-2"></div>
                     </div>
-                    <div>
-                        <label class="block text-xs soft-text">Sensor Log Retention (days)</label>
-                        <input type="number" min="1" name="log_retention_days" value="{{ app_settings.log_retention_days }}" class="input-dark">
-                    </div>
-                </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs soft-text">Theme</label>
-                        <select name="theme" class="input-dark">
-                            <option value="dark" {% if app_settings.theme == 'dark' %}selected{% endif %}>Dark</option>
-                            <option value="light" {% if app_settings.theme == 'light' %}selected{% endif %}>Light</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs soft-text">Structured Log Level</label>
-                        <select name="log_level" class="input-dark">
-                            <option value="INFO" {% if app_settings.log_level == 'INFO' %}selected{% endif %}>Info</option>
-                            <option value="DEBUG" {% if app_settings.log_level == 'DEBUG' %}selected{% endif %}>Debug</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Temperature compensation removed -->
-
-                <div class="p-3 border rounded space-y-2 border-edge">
-                    <div class="font-semibold text-sm">Calibration + Backup Scheduling</div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs soft-text">Calibration reminder (days)</label>
-                            <input type="number" min="1" name="calibration_reminder_days" value="{{ app_settings.calibration_reminder_days }}" class="input-dark">
+                            <label class="block text-xs soft-text">Absolute Humidity Danger Threshold (%)</label>
+                            <input type="number" step="0.1" name="humidity_threshold"
+                                value="{{ app_settings.humidity_threshold }}" class="input-dark">
                         </div>
                         <div>
-                            <label class="block text-xs soft-text">Backup interval (hours)</label>
-                            <input type="number" min="1" name="backup_interval_hours" value="{{ app_settings.backup_interval_hours }}" class="input-dark">
+                            <label class="block text-xs soft-text">Predictive Warning Window (hours)</label>
+                            <input type="number" min="1" name="predictive_warning_hours"
+                                value="{{ app_settings.predictive_warning_hours }}" class="input-dark">
+                        </div>
+                        <div>
+                            <label class="block text-xs soft-text">Sensor Log Retention (days)</label>
+                            <input type="number" min="1" name="log_retention_days"
+                                value="{{ app_settings.log_retention_days }}" class="input-dark">
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-xs soft-text">Backup retention count</label>
-                        <input type="number" min="1" name="backup_retention_count" value="{{ app_settings.backup_retention_count }}" class="input-dark">
-                    </div>
-                </div>
 
-                <button type="submit" class="btn btn-blue w-full uppercase">Save Configuration</button>
-            </form>
-            <div id="settings-result" class="mt-3"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs soft-text">Theme</label>
+                            <select name="theme" class="input-dark">
+                                <option value="dark" {% if app_settings.theme=='dark' %}selected{% endif %}>Dark
+                                </option>
+                                <option value="light" {% if app_settings.theme=='light' %}selected{% endif %}>Light
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs soft-text">Structured Log Level</label>
+                            <select name="log_level" class="input-dark">
+                                <option value="INFO" {% if app_settings.log_level=='INFO' %}selected{% endif %}>Info
+                                </option>
+                                <option value="DEBUG" {% if app_settings.log_level=='DEBUG' %}selected{% endif %}>Debug
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Temperature compensation removed -->
+
+                    <div class="p-3 border rounded space-y-2 border-edge">
+                        <div class="font-semibold text-sm">Calibration + Backup Scheduling</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs soft-text">Calibration reminder (days)</label>
+                                <input type="number" min="1" name="calibration_reminder_days"
+                                    value="{{ app_settings.calibration_reminder_days }}" class="input-dark">
+                            </div>
+                            <div>
+                                <label class="block text-xs soft-text">Backup interval (hours)</label>
+                                <input type="number" min="1" name="backup_interval_hours"
+                                    value="{{ app_settings.backup_interval_hours }}" class="input-dark">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs soft-text">Backup retention count</label>
+                            <input type="number" min="1" name="backup_retention_count"
+                                value="{{ app_settings.backup_retention_count }}" class="input-dark">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-blue w-full uppercase">Save Configuration</button>
+                </form>
+                <div id="settings-result" class="mt-3"></div>
             </div>
         </div>
 
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-xl font-bold">Data, Logs, Config, and Backups</h2>
-                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-data" title="Collapse">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                <button type="button"
+                    class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors"
+                    data-collapse-target="panel-settings-data" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="transition-transform duration-200">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
                 </button>
             </div>
             <div id="panel-settings-data">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                <a href="/api/logs/download?format=csv&hours=168" class="btn btn-outline text-center text-sm">Export Sensor CSV</a>
-                <a href="/api/logs/download?format=json&hours=168" class="btn btn-outline text-center text-sm">Export Sensor JSON</a>
-                <a href="/api/logs/structured/download" class="btn btn-outline text-center text-sm">Download Structured Logs</a>
-                <a href="/settings/export" class="btn btn-outline text-center text-sm">Export Config JSON</a>
-            </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                    <a href="/api/logs/download?format=csv&hours=168" class="btn btn-outline text-center text-sm">Export
+                        Sensor CSV</a>
+                    <a href="/api/logs/download?format=json&hours=168"
+                        class="btn btn-outline text-center text-sm">Export Sensor JSON</a>
+                    <a href="/api/logs/structured/download" class="btn btn-outline text-center text-sm">Download
+                        Structured Logs</a>
+                    <a href="/settings/export" class="btn btn-outline text-center text-sm">Export Config JSON</a>
+                </div>
 
-            <form id="import-form" hx-post="/settings/import" hx-encoding="multipart/form-data" hx-target="#config-import-result" class="space-y-2 mb-3">
-                <label class="block text-xs soft-text">Import Config JSON</label>
-                <input id="config-file-input" type="file" name="config_file" accept="application/json" class="input-dark" required>
-                <button id="import-config-btn" class="btn btn-gray w-full uppercase text-sm">Import Configuration</button>
-            </form>
-            <div id="config-import-result" class="mb-3"></div>
+                <form id="import-form" hx-post="/settings/import" hx-encoding="multipart/form-data"
+                    hx-target="#config-import-result" class="space-y-2 mb-3">
+                    <label class="block text-xs soft-text">Import Config JSON</label>
+                    <input id="config-file-input" type="file" name="config_file" accept="application/json"
+                        class="input-dark" required>
+                    <button id="import-config-btn" class="btn btn-gray w-full uppercase text-sm">Import
+                        Configuration</button>
+                </form>
+                <div id="config-import-result" class="mb-3"></div>
 
-            <script>
-            (function(){
-                const form = document.getElementById('import-form');
-                const fileInput = document.getElementById('config-file-input');
-                const modalRoot = document.getElementById('modal-root');
+                <script>
+                    (function () {
+                        const form = document.getElementById('import-form');
+                        const fileInput = document.getElementById('config-file-input');
+                        const modalRoot = document.getElementById('modal-root');
 
-                if (!form || !fileInput || !modalRoot) return;
+                        if (!form || !fileInput || !modalRoot) return;
 
-                form.addEventListener('submit', function(e){
-                    if (form.dataset.confirmed === '1') {
-                        form.dataset.confirmed = '0';
-                        return true;
-                    }
-                    e.preventDefault();
-                    const file = fileInput.files && fileInput.files[0];
-                    if (!file) return alert('Please choose a JSON file to import.');
-                    const reader = new FileReader();
-                    reader.onload = function(ev){
-                        try{
-                            const obj = JSON.parse(ev.target.result);
-                            const pretty = JSON.stringify(obj, null, 2).replace(/</g, '&lt;');
-                            modalRoot.innerHTML = `\
+                        form.addEventListener('submit', function (e) {
+                            if (form.dataset.confirmed === '1') {
+                                form.dataset.confirmed = '0';
+                                return true;
+                            }
+                            e.preventDefault();
+                            const file = fileInput.files && fileInput.files[0];
+                            if (!file) return alert('Please choose a JSON file to import.');
+                            const reader = new FileReader();
+                            reader.onload = function (ev) {
+                                try {
+                                    const obj = JSON.parse(ev.target.result);
+                                    const pretty = JSON.stringify(obj, null, 2).replace(/</g, '&lt;');
+                                    modalRoot.innerHTML = `\
                                 <div class="max-w-3xl mx-auto bg-white p-4 rounded text-sm">\
                                     <h3 class="font-bold mb-2">Import Configuration — Confirm</h3>\
                                     <div class="border rounded p-2 mb-3"><pre style="max-height:40vh;overflow:auto">${pretty}</pre></div>\
@@ -126,27 +160,28 @@
                                         <button id="import-confirm" class="btn btn-blue" type="button">Apply</button>\
                                     </div>\
                                 </div>`;
-                            modalRoot.classList.remove('hidden');
+                                    modalRoot.classList.remove('hidden');
 
-                            document.getElementById('import-cancel').addEventListener('click', ()=>{ modalRoot.classList.add('hidden'); modalRoot.innerHTML=''; });
-                            document.getElementById('import-confirm').addEventListener('click', ()=>{
-                                modalRoot.classList.add('hidden'); modalRoot.innerHTML='';
-                                form.dataset.confirmed = '1';
-                                form.requestSubmit();
-                            });
-                        }catch(err){ alert('Selected file is not valid JSON.'); }
-                    };
-                    reader.readAsText(file);
-                });
-            })();
-            </script>
+                                    document.getElementById('import-cancel').addEventListener('click', () => { modalRoot.classList.add('hidden'); modalRoot.innerHTML = ''; });
+                                    document.getElementById('import-confirm').addEventListener('click', () => {
+                                        modalRoot.classList.add('hidden'); modalRoot.innerHTML = '';
+                                        form.dataset.confirmed = '1';
+                                        form.requestSubmit();
+                                    });
+                                } catch (err) { alert('Selected file is not valid JSON.'); }
+                            };
+                            reader.readAsText(file);
+                        });
+                    })();
+                </script>
 
-            <button hx-post="/settings/backup" hx-target="#backup-result" class="btn btn-blue w-full uppercase text-sm">Run Backup Now</button>
-            <div id="backup-result" class="mt-2"></div>
+                <button hx-post="/settings/backup" hx-target="#backup-result"
+                    class="btn btn-blue w-full uppercase text-sm">Run Backup Now</button>
+                <div id="backup-result" class="mt-2"></div>
             </div>
         </div>
 
-        
+
     </div>
 
     <div class="space-y-6">
@@ -155,59 +190,84 @@
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-xl font-bold">Firmware Builder</h2>
-                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-firmware" title="Collapse">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                <button type="button"
+                    class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors"
+                    data-collapse-target="panel-settings-firmware" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="transition-transform duration-200">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
                 </button>
             </div>
             <div id="panel-settings-firmware">
-            <form action="/build_firmware" method="POST" class="space-y-4">
-                <div>
-                    <label class="block text-xs soft-text">WiFi SSID</label>
-                    <input type="text" name="ssid" class="input-dark" required>
-                </div>
-                <div>
-                    <label class="block text-xs soft-text">WiFi Password</label>
-                    <div class="relative">
-                        <input id="wifi-password" type="password" name="password" class="input-dark pr-10" required>
-                        <button id="toggle-password" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-sm" aria-label="Toggle password visibility">
-                            <svg id="pw-eye" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <form action="/build_firmware" method="POST" class="space-y-4">
                     <div>
-                        <label class="block text-xs soft-text">DryDock Server IP</label>
-                        <input type="text" name="pi_ip" value="x.x.x.x" class="input-dark" required>
+                        <label class="block text-xs soft-text">WiFi SSID</label>
+                        <input type="text" name="ssid" class="input-dark" required>
                     </div>
                     <div>
-                        <label class="block text-xs soft-text">DryDock Server Port</label>
-                        <input type="text" name="pi_port" value="5000" class="input-dark" required>
+                        <label class="block text-xs soft-text">WiFi Password</label>
+                        <div class="relative">
+                            <input id="wifi-password" type="password" name="password" class="input-dark pr-10" required>
+                            <button id="toggle-password" type="button"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-sm"
+                                aria-label="Toggle password visibility">
+                                <svg id="pw-eye" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <button type="submit" class="btn btn-blue w-full uppercase">Download Full ESP32 Script</button>
-            </form>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs soft-text">DryDock Server IP</label>
+                            <input type="text" name="pi_ip" value="x.x.x.x" class="input-dark" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs soft-text">DryDock Server Port</label>
+                            <input type="text" name="pi_port" value="5000" class="input-dark" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-blue w-full uppercase">Download Full ESP32 Script</button>
+                </form>
             </div>
         </div>
 
         <div class="card space-y-3">
             <div class="flex justify-between items-center mb-2 section-title">
                 <h2 class="text-xl font-bold">System Health</h2>
-                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-health" title="Collapse">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                <button type="button"
+                    class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors"
+                    data-collapse-target="panel-health" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="transition-transform duration-200">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
                 </button>
             </div>
             <div id="panel-health" class="space-y-3">
                 <div class="flex justify-between text-sm pb-2 mt-3">
                     <span class="soft-text">DryDock ESP32</span>
-                    <span id="health-esp32" class="font-bold flex items-center gap-2"><span class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ sensor_status.msg }}</span>
+                    <span id="health-esp32" class="font-bold flex items-center gap-2"><span
+                            class="dot {% if sensor_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{
+                        sensor_status.msg }}</span>
                 </div>
                 <div class="flex justify-between text-sm pb-2">
                     <span class="soft-text">Spoolman API</span>
-                    <span id="health-spoolman" class="font-bold flex items-center gap-2"><span class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ spoolman_status.msg }}</span>
+                    <span id="health-spoolman" class="font-bold flex items-center gap-2"><span
+                            class="dot {% if spoolman_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{
+                        spoolman_status.msg }}</span>
                 </div>
                 <div class="flex justify-between text-sm pb-2">
                     <span class="soft-text">Database</span>
-                    <span id="health-db" class="font-bold flex items-center gap-2"><span class="dot {% if db_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ db_status.msg }}</span>
+                    <span id="health-db" class="font-bold flex items-center gap-2"><span
+                            class="dot {% if db_status.ok %}dot-g{% else %}dot-r{% endif %}"></span>{{ db_status.msg
+                        }}</span>
                 </div>
                 <div class="flex justify-between text-sm pt-2 border-t border-edge">
                     <span class="soft-text">Uptime</span>
@@ -222,8 +282,14 @@
         <div class="card">
             <div class="flex justify-between items-center mb-4 section-title">
                 <h2 class="text-xl font-bold">Account</h2>
-                <button type="button" class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors" data-collapse-target="panel-settings-account" title="Collapse">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                <button type="button"
+                    class="p-1 text-[var(--muted)] rounded hover:bg-[var(--bg-surface-hover)] transition-colors"
+                    data-collapse-target="panel-settings-account" title="Collapse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="transition-transform duration-200">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
                 </button>
             </div>
             <div id="panel-settings-account" class="space-y-4">
@@ -239,7 +305,8 @@
                         </div>
                         <div>
                             <label class="block text-xs soft-text">Confirm New Password</label>
-                            <input id="confirm-password" type="password" name="confirm_password" class="input-dark" required>
+                            <input id="confirm-password" type="password" name="confirm_password" class="input-dark"
+                                required>
                         </div>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-2">
@@ -256,44 +323,44 @@
 
 {% block scripts %}
 <script>
-async function refreshHealthSettings() {
-    try {
-        const res = await fetch('/api/system/health');
-        if (!res.ok) return;
-        const data = await res.json();
-        const paint = (id, payload) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const dotClass = payload && payload.ok ? 'dot-g' : 'dot-r';
-            el.innerHTML = `<span class="dot ${dotClass}"></span>${payload && payload.msg ? payload.msg : 'Unknown'}`;
-        };
-        paint('health-esp32', data.esp32 || { ok: false, msg: 'Unknown' });
-        paint('health-spoolman', data.spoolman || { ok: false, msg: 'Unknown' });
-        paint('health-db', data.database || { ok: false, msg: 'Unknown' });
-        const upEl = document.getElementById('health-uptime');
-        if (upEl && data.uptime) upEl.textContent = data.uptime;
-    } catch (e) {
-        // ignore
+    async function refreshHealthSettings() {
+        try {
+            const res = await fetch('/api/system/health');
+            if (!res.ok) return;
+            const data = await res.json();
+            const paint = (id, payload) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const dotClass = payload && payload.ok ? 'dot-g' : 'dot-r';
+                el.innerHTML = `<span class="dot ${dotClass}"></span>${payload && payload.msg ? payload.msg : 'Unknown'}`;
+            };
+            paint('health-esp32', data.esp32 || { ok: false, msg: 'Unknown' });
+            paint('health-spoolman', data.spoolman || { ok: false, msg: 'Unknown' });
+            paint('health-db', data.database || { ok: false, msg: 'Unknown' });
+            const upEl = document.getElementById('health-uptime');
+            if (upEl && data.uptime) upEl.textContent = data.uptime;
+        } catch (e) {
+            // ignore
+        }
     }
-}
 
-document.addEventListener('DOMContentLoaded', () => {
-    refreshHealthSettings();
-    setInterval(refreshHealthSettings, 8000);
-});
-document.addEventListener('DOMContentLoaded', () => {
-    const clearButton = document.getElementById('pw-clear');
-    const currentPassword = document.querySelector('input[name="current_password"]');
-    const newPassword = document.getElementById('new-password');
-    const confirmPassword = document.getElementById('confirm-password');
-    if (!clearButton || !currentPassword || !newPassword || !confirmPassword) return;
-    clearButton.addEventListener('click', () => {
-        currentPassword.value = '';
-        newPassword.value = '';
-        confirmPassword.value = '';
-        currentPassword.focus();
+    document.addEventListener('DOMContentLoaded', () => {
+        refreshHealthSettings();
+        setInterval(refreshHealthSettings, 8000);
     });
-});
+    document.addEventListener('DOMContentLoaded', () => {
+        const clearButton = document.getElementById('pw-clear');
+        const currentPassword = document.querySelector('input[name="current_password"]');
+        const newPassword = document.getElementById('new-password');
+        const confirmPassword = document.getElementById('confirm-password');
+        if (!clearButton || !currentPassword || !newPassword || !confirmPassword) return;
+        clearButton.addEventListener('click', () => {
+            currentPassword.value = '';
+            newPassword.value = '';
+            confirmPassword.value = '';
+            currentPassword.focus();
+        });
+    });
     // Password toggle
     document.addEventListener('DOMContentLoaded', () => {
         const toggle = document.getElementById('toggle-password');
@@ -308,19 +375,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Spoolman test indicator updater
-    document.body.addEventListener('htmx:afterSwap', function(e){
-        try{
-            if (e.detail && e.detail.target && e.detail.target.id === 'spoolman-test-result'){
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        try {
+            if (e.detail && e.detail.target && e.detail.target.id === 'spoolman-test-result') {
                 const el = document.getElementById('spoolman-test-indicator');
                 if (!el) return;
                 const html = e.detail.xhr && e.detail.xhr.responseText ? e.detail.xhr.responseText : '';
-                if (html.toLowerCase().includes('successful')){
+                if (html.toLowerCase().includes('successful')) {
                     el.innerHTML = '<span class="dot dot-g"></span>';
                 } else {
                     el.innerHTML = '<span class="dot dot-r"></span>';
                 }
             }
-        }catch(_){}
+        } catch (_) { }
     });
 </script>
 {% endblock %}
