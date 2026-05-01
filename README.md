@@ -25,7 +25,7 @@ DryDock is a web dashboard that gives you real-time visibility into your filamen
 - **Temperature and humidity monitoring**  
   Dual AM2320 sensors measure conditions inside and outside the dry box. DryDock evaluates desiccant and enclosure health primarily from the absolute internal humidity reading (`hum_1`).
 
-  <img width="50%" height="557" alt="image" src="https://github.com/user-attachments/assets/a7ca87c8-0efc-4d99-ba94-15a0c963b0f1" />
+ <img width="897" height="549" alt="image" src="https://github.com/user-attachments/assets/0fd80594-3b72-43ba-be92-7690b788a78c" />
 
 - **RFID spool identification**  
   An MFRC522 reader scans 13.56 MHz NFC tags attached to spools, so DryDock knows exactly which spool is being weighed—no manual selection needed.
