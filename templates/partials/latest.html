@@ -10,8 +10,21 @@
                     class="font-bold text-xl {% if desiccant_healthy %}text-green-400{% else %}text-red-400{% endif %}">
                     {% if desiccant_healthy %}Healthy{% else %}Saturated{% endif %}</div>
             </div>
-            <div class="text-2xl mono">{{ "%.1f"|format(hum_delta) if hum_delta is not none else "--" }}% &Delta;</div>
+            <div class="text-2xl mono">{{ "%.1f"|format(internal_hum) if internal_hum is not none else "--" }}%</div>
         </div>
+            <div class="mt-3 p-3 border rounded border-edge">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-xs soft-text uppercase">Silica Remaining</div>
+                        <div class="text-lg font-bold">{{ "%.1f"|format(app_settings.silica_capacity_g and ((app_settings.silica_capacity_g - (app_settings.silica_load_index or 0))/app_settings.silica_capacity_g*100) if app_settings.silica_capacity_g else 100) }}%</div>
+                    </div>
+                    <div>
+                        <form hx-post="/silica/regenerate" hx-target="closest .card" hx-swap="outerHTML">
+                            <button type="submit" class="btn btn-outline btn-sm">Regenerate Silica</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
 
         <div id="predictive-humidity-warning" class="hidden mt-2 p-2 border border-[#E72A2E] text-[#E72A2E] bg-[#E72A2E]/10 rounded text-xs font-bold flex items-center gap-2">
             ⚠️ <span id="predictive-text"></span>

@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from .models import AppSettings, BackupLog, SensorLog
 from .utils.database import create_database_backup, get_or_create
 from .utils.logging import log_event
+from .utils.humidity import ema_series, robust_hourly_slope
 
 
 def prune_old_logs(app):
@@ -65,16 +66,27 @@ def monitor_humidity_thresholds(app):
             )
             return
 
+        # Build arrays for robust slope estimation
         time_delta_hours = (latest.timestamp - first.timestamp).total_seconds() / 3600.0
-        if time_delta_hours < 2.0:
+        if time_delta_hours < 1.0:
             return
 
-        hum_delta = latest.hum_1 - first.hum_1
-        rate_per_hour = hum_delta / time_delta_hours
+        rows = recent_logs
+        times = [r.timestamp for r in rows if r.hum_1 is not None]
+        hums = [r.hum_1 for r in rows if r.hum_1 is not None]
+        if len(hums) < 3:
+            return
 
-        
-        if rate_per_hour > 0.05:
-            hours_remaining = (settings.humidity_threshold - latest.hum_1) / rate_per_hour
+        ema_vals = ema_series(hums, alpha=0.18)
+        ema_latest = ema_vals[-1]
+
+        slope = robust_hourly_slope(times, hums)
+        if slope is None:
+            return
+
+        min_slope = 0.01
+        if slope > min_slope:
+            hours_remaining = (settings.humidity_threshold - latest.hum_1) / slope
 
             if hours_remaining <= settings.predictive_warning_hours:
                 settings.last_humidity_alert_at = datetime.utcnow()
@@ -83,10 +95,24 @@ def monitor_humidity_thresholds(app):
                     "INFO",
                     "silica_degradation_warning",
                     current_hum=latest.hum_1,
-                    rate_per_hour=rate_per_hour,
+                    rate_per_hour=slope,
+                    ema_hum=ema_latest,
                     predicted_hours_left=round(hours_remaining, 1),
                     message=f"Silica degrading. Predicted to breach {settings.humidity_threshold}% in {int(hours_remaining)} hours."
                 )
+                # Update simple silica load index estimate. This is a lightweight heuristic
+                # mapping RH-per-hour slope to a small incremental load. The factor is
+                # conservative; adjust after observing real-world data.
+                try:
+                    uptake_factor = 0.5
+                    delta_load = slope * uptake_factor * 0.1
+                    settings.silica_load_index = min(settings.silica_capacity_g or 0.0, (settings.silica_load_index or 0.0) + delta_load)
+                    db.session.commit()
+                except Exception:
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
 
 def run_scheduled_backups(app):
     with app.app_context():

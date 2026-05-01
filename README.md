@@ -23,7 +23,7 @@ DryDock is a web dashboard that gives you real-time visibility into your filamen
   A 24-bit NAU7802 ADC and a 5 kg load cell measure remaining filament weight with high precision. A built-in calibration wizard makes setup straightforward.
 
 - **Temperature and humidity monitoring**  
-  Dual AM2320 sensors measure conditions inside and outside the dry box. DryDock computes the humidity differential so you can tell whether your desiccant is still doing its job.
+  Dual AM2320 sensors measure conditions inside and outside the dry box. DryDock evaluates desiccant and enclosure health primarily from the absolute internal humidity reading (`hum_1`).
 
   <img width="50%" height="557" alt="image" src="https://github.com/user-attachments/assets/a7ca87c8-0efc-4d99-ba94-15a0c963b0f1" />
 

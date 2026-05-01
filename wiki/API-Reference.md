@@ -158,7 +158,7 @@ Returns time-series sensor data for display in the dashboard charts.
 
 The `series` object contains Chart.js-ready `{x, y}` points in UTC milliseconds, with null separator points inserted when there is a long outage gap so the line visibly breaks. The `labels` array remains for backward compatibility and uses UTC timestamps with a `Z` suffix.
 
-The `anomalies` array contains `{x, y}` objects for each time point where the humidity delta (`hum_2 - hum_1`) fell below the configured threshold.
+The `anomalies` array contains `{x, y}` objects for each time point where the internal humidity (`hum_1`) exceeded the configured danger threshold.
 
 ---
 

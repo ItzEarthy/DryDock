@@ -48,3 +48,4 @@ instance/drydock.db
 /instance
 instance/drydock.db
 *.db
+.flask_secret

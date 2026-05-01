@@ -78,7 +78,20 @@
       try { feather.replace(); } catch (e) { /* ignore */ }
     }
 
-    document.getElementById('update-close').addEventListener('click', () => {
+    const latestVersion = releases[0] && releases[0].version ? releases[0].version : '';
+    document.getElementById('update-close').addEventListener('click', async () => {
+      // Persist dismissal so the popup won't reappear until a newer release is available.
+      if (latestVersion) {
+        try {
+          await fetch('/api/system/install_version', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ version: latestVersion }),
+          });
+        } catch (e) {
+          console.warn('Failed to save dismissed version', e);
+        }
+      }
       root.classList.add('hidden');
       root.innerHTML = '';
     });

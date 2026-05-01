@@ -75,13 +75,13 @@ def build_context(include_spools=True):
         recent_logs.reverse()
         stability = compute_weight_stability(recent_logs, calibration, settings)
 
-        hum_delta = None
+        internal_hum = None
         desiccant_healthy = None
         weight_grams = None
         if latest_log:
-            if latest_log.hum_1 is not None and latest_log.hum_2 is not None:
-                hum_delta = latest_log.hum_2 - latest_log.hum_1
-                desiccant_healthy = hum_delta >= settings.humidity_threshold
+            if latest_log.hum_1 is not None:
+                internal_hum = latest_log.hum_1
+                desiccant_healthy = internal_hum < settings.humidity_threshold
             weight_grams = calculate_weight_grams(latest_log.raw_adc, latest_log.temp_1, calibration, settings)
     else:
         # ESP32 is offline: hide live telemetry and related UI values
@@ -89,7 +89,7 @@ def build_context(include_spools=True):
         uid_log = None
         recent_logs = []
         stability = {"progress": 0, "stable": False, "stable_weight": None, "ema_weight": None, "samples": 0}
-        hum_delta = None
+        internal_hum = None
         desiccant_healthy = None
         weight_grams = None
 
@@ -126,7 +126,7 @@ def build_context(include_spools=True):
         "cal_settings": calibration,
         "app_settings": settings,
         "latest_uid": uid_log.rfid_uid if uid_log else "",
-        "hum_delta": hum_delta,
+        "internal_hum": internal_hum,
         "weight_grams": weight_grams,
         "weight_kg": (weight_grams / 1000.0) if weight_grams is not None else None,
         "desiccant_healthy": desiccant_healthy,
@@ -200,11 +200,42 @@ def save_settings():
     log_level = (request.form.get("log_level") or "INFO").upper()
     settings.log_level = "DEBUG" if log_level == "DEBUG" else "INFO"
 
+    predictive_hours = _to_int(request.form.get("predictive_warning_hours"))
+    if predictive_hours is not None and predictive_hours >= 1:
+        settings.predictive_warning_hours = predictive_hours
+    silica_capacity = _to_float(request.form.get("silica_capacity_g"))
+    if silica_capacity is not None and silica_capacity >= 0:
+        settings.silica_capacity_g = silica_capacity
+
     db.session.commit()
     configure_structured_logging(settings.log_level)
     log_event("INFO", "settings_updated", by_user=get_current_user().username)
 
     return "<div class='p-3 bg-[#35AB57]/20 border border-[#35AB57] text-[#35AB57] rounded mt-4'>Settings saved successfully.</div>"
+
+
+@dashboard_bp.post("/silica/regenerate")
+@login_required
+def silica_regenerate():
+    settings = get_or_create(AppSettings)
+    try:
+        settings.silica_load_index = 0.0
+        from ..extensions import db as _db
+
+        settings.last_humidity_alert_at = None
+        _db.session.add(settings)
+        _db.session.commit()
+        log_event("INFO", "silica_regenerated", by_user=get_current_user().username)
+        if request.headers.get("HX-Request"):
+            ctx = build_context(include_spools=False)
+            return render_template("partials/latest.html", **ctx)
+        return "OK", 200
+    except Exception as exc:
+        try:
+            _db.session.rollback()
+        except Exception:
+            pass
+        return ("Failed to reset silica state", 500)
 
 
 @dashboard_bp.post("/settings/test_spoolman")
