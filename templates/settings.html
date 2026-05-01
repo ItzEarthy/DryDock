@@ -39,6 +39,11 @@
                             <input type="number" min="1" name="predictive_warning_hours"
                                 value="{{ app_settings.predictive_warning_hours }}" class="input-dark">
                         </div>
+                            <div>
+                                <label class="block text-xs soft-text">Silica Capacity (abstract units / g)</label>
+                                <input type="number" step="0.1" min="0" name="silica_capacity_g"
+                                    value="{{ app_settings.silica_capacity_g }}" class="input-dark">
+                            </div>
                         <div>
                             <label class="block text-xs soft-text">Sensor Log Retention (days)</label>
                             <input type="number" min="1" name="log_retention_days"

@@ -46,6 +46,9 @@ class AppSettings(db.Model):
     last_humidity_alert_at = db.Column(db.DateTime, nullable=True)
     installed_version = db.Column(db.String(64), nullable=False, default="")
     predictive_warning_hours = db.Column(db.Integer, nullable=False, default=72)
+    # Silica modeling: estimated capacity (arbitrary units/grams) and accumulated load
+    silica_capacity_g = db.Column(db.Float, nullable=False, default=10.0)
+    silica_load_index = db.Column(db.Float, nullable=False, default=0.0)
 
 
 class SpoolmanSyncLog(db.Model):

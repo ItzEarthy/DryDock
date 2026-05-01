@@ -15,6 +15,7 @@ from ..models import AppSettings, CalibrationSettings, SensorLog
 from ..utils.database import check_database_status, get_or_create
 from ..utils.logging import APP_START_TIME, format_uptime, log_event
 from ..utils.scale import AUTO_ZERO_ADJUST_ALPHA, AUTO_ZERO_GRAMS, _to_float, _to_int, calculate_weight_grams, compute_weight_stability
+from ..utils.humidity import absolute_humidity_gm3, ema_series, robust_hourly_slope
 from ..utils.spoolman import check_spoolman
 
 
@@ -247,21 +248,35 @@ def live_snapshot_api():
         weight = 0.0
 
     hours_remaining = None
+    ema_hum = None
+    abs_hum = None
     if esp_ok and latest.hum_1 is not None:
+        # Build recent window (24h) points to derive trend robustly
         cutoff = datetime.utcnow() - timedelta(hours=24)
-        oldest_in_window = SensorLog.query.filter(
-            SensorLog.timestamp >= cutoff, 
-            SensorLog.hum_1.isnot(None)
-        ).order_by(SensorLog.timestamp.asc()).first()
-        
-        if oldest_in_window:
-            time_delta_hours = (latest.timestamp - oldest_in_window.timestamp).total_seconds() / 3600.0
-            if time_delta_hours >= 2.0:
-                hum_delta = latest.hum_1 - oldest_in_window.hum_1
-                rate_per_hour = hum_delta / time_delta_hours
-                # Use a lower threshold for sensitivity to slower humidity climbs.
-                if rate_per_hour > 0.01:
-                    hours_remaining = (settings.humidity_threshold - latest.hum_1) / rate_per_hour
+        rows = (
+            SensorLog.query.filter(
+                SensorLog.timestamp >= cutoff,
+                SensorLog.hum_1.isnot(None)
+            )
+            .order_by(SensorLog.timestamp.asc())
+            .all()
+        )
+        times = [r.timestamp for r in rows]
+        hums = [r.hum_1 for r in rows]
+
+        if hums:
+            ema_series_vals = ema_series(hums, alpha=0.18)
+            ema_hum = ema_series_vals[-1]
+            # compute absolute humidity using latest temp if available
+            if latest.temp_1 is not None:
+                abs_hum = absolute_humidity_gm3(latest.temp_1, latest.hum_1)
+
+        if len(times) >= 3:
+            slope = robust_hourly_slope(times, hums)
+            # treat only positive upward slopes (in %RH per hour)
+            min_slope = 0.01
+            if slope is not None and slope > min_slope:
+                hours_remaining = (settings.humidity_threshold - latest.hum_1) / slope
 
     return jsonify(
         {
@@ -271,8 +286,10 @@ def live_snapshot_api():
             "tare_offset": round(calibration.tare_offset, 3),
             "rfid_uid": latest_uid_row.rfid_uid if latest_uid_row else "",
             "timestamp": _utc_iso(latest.timestamp),
-            # NEW FIELD FOR FRONTEND:
+            # NEW FIELDS FOR FRONTEND:
             "hours_remaining": round(hours_remaining, 1) if hours_remaining and hours_remaining > 0 else None,
+            "ema_hum": round(ema_hum, 2) if ema_hum is not None else None,
+            "abs_humidity_gm3": round(abs_hum, 2) if abs_hum is not None else None,
         }
     )
 

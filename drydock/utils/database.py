@@ -73,6 +73,8 @@ def ensure_schema_extensions() -> None:
         ("last_humidity_alert_at", "last_humidity_alert_at DATETIME"),
         ("installed_version", "installed_version VARCHAR(64) NOT NULL DEFAULT ''"),
         ("predictive_warning_hours", "predictive_warning_hours INTEGER NOT NULL DEFAULT 72"),
+        ("silica_capacity_g", "silica_capacity_g REAL NOT NULL DEFAULT 10.0"),
+        ("silica_load_index", "silica_load_index REAL NOT NULL DEFAULT 0.0"),
     ]
 
     for col_name, col_ddl in app_additions:
