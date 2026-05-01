@@ -259,7 +259,8 @@ def live_snapshot_api():
             if time_delta_hours >= 2.0:
                 hum_delta = latest.hum_1 - oldest_in_window.hum_1
                 rate_per_hour = hum_delta / time_delta_hours
-                if rate_per_hour > 0.05:
+                # Use a lower threshold for sensitivity to slower humidity climbs.
+                if rate_per_hour > 0.01:
                     hours_remaining = (settings.humidity_threshold - latest.hum_1) / rate_per_hour
 
     return jsonify(

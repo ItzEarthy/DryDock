@@ -72,8 +72,8 @@ def monitor_humidity_thresholds(app):
         hum_delta = latest.hum_1 - first.hum_1
         rate_per_hour = hum_delta / time_delta_hours
 
-        
-        if rate_per_hour > 0.05:
+        # More sensitive predictive trigger: act on smaller upward trends.
+        if rate_per_hour > 0.01:
             hours_remaining = (settings.humidity_threshold - latest.hum_1) / rate_per_hour
 
             if hours_remaining <= settings.predictive_warning_hours:

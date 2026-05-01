@@ -9,14 +9,14 @@ DryDock is an open-source smart filament management system for 3D printing. It c
 The system uses an **ESP32 microcontroller** to continuously read data from three types of sensors:
 
 - A **NAU7802 24-bit ADC** connected to a load cell, which weighs filament spools with precision.
-- Two **AM2320 temperature and humidity sensors** - one placed inside the dry box and one measuring ambient room conditions. The difference between these two readings tells you whether your desiccant (silica gel) is still effective.
+-- Two **AM2320 temperature and humidity sensors** - one placed inside the dry box and one measuring ambient room conditions. DryDock now evaluates desiccant and enclosure health primarily from the absolute internal humidity (`hum_1`) rather than relying on the difference between sensors.
 - An **MFRC522 RFID reader** that scans NFC tags attached to your spools, allowing the system to identify exactly which spool is being weighed.
 
 The ESP32 reports all of this data over Wi-Fi to a **Python/Flask backend** running on a Raspberry Pi (or any Linux host on the same network). The backend stores the data, provides the dashboard, and integrates with **Spoolman** to keep your filament inventory automatically up to date.
 
 ## Key Features
 
-- **Differential Humidity Monitoring:** Compares inside and outside humidity to determine desiccant health. Alerts you when the humidity delta drops below your configured threshold.
+-- **Internal Humidity Monitoring:** Flags the desiccant as saturated when the internal humidity (`hum_1`) exceeds the configured danger threshold. A predictive warning may also be shown when recent trends indicate the internal humidity will reach the threshold within the configured predictive window.
 - **Automatic Spool Weighing:** Uses a high-resolution 24-bit ADC and a 5 kg load cell to measure remaining filament weight.
 - **RFID Spool Identification:** Tap an NFC-tagged spool to the reader and the system knows exactly which spool it is weighing.
 - **Spoolman Integration:** Automatically updates remaining filament weight in your Spoolman database after each scan and weigh cycle.

@@ -41,11 +41,11 @@ After changing this value, click **Test Connection** to verify that DryDock can 
 
 ### Humidity Threshold
 
-The minimum acceptable humidity delta (in percent) between the inside and outside readings. If the measured delta (ambient minus inside) falls below this value, the dashboard flags the desiccant as saturated and you should replace or regenerate the silica gel.
+The absolute internal humidity danger threshold (in percent). If the measured internal humidity (`hum_1`) exceeds this value, the dashboard flags the desiccant as saturated and you should replace or regenerate the silica gel.
 
 **Default:** `10.0` (10%)
 
-A higher value means you will be alerted sooner when the desiccant begins to saturate. A lower value gives more tolerance before an alert is triggered.
+A lower threshold means you will be alerted sooner when enclosure humidity rises. Increasing this value gives more tolerance before an alert is triggered.
 
 ### Log Retention Days
 

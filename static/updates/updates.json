@@ -1,7 +1,15 @@
 [
   {
+    "version": "1.1.1",
+    "date": "2026-05-01",
+    "reflash_required": false,
+    "bug_fixes": [
+      "Removed any remaining references to 'Humidity Delta' in the codebase and UI to prevent confusion after the switch to absolute internal humidity thresholds."
+    ]
+  },
+  {
     "version": "1.1.0",
-    "date": "2026-04-01",
+    "date": "2026-04-27",
     "reflash_required": false,
     "bug_fixes": [
       "Fixed anomaly chart incorrectly highlighting data based on the humidity delta instead of absolute internal humidity."
