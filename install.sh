@@ -6,13 +6,15 @@ set -e
 # --- FLAG PARSING ---
 SKIP_WIFI=false
 FIX_ENV=false
+WIFI_ONLY=false
 
-while getopts "sf" opt; do
-  case $opt in
-    s) SKIP_WIFI=true ;;
-    f) FIX_ENV=true ;;
-    *) echo "Usage: ./install.sh [-s (skip wifi)] [-f (only add missing .env parts)]"; exit 1 ;;
-  esac
+while getopts "sfw" opt; do
+    case $opt in
+        s) SKIP_WIFI=true ;;
+        f) FIX_ENV=true ;;
+        w) WIFI_ONLY=true ;;
+        *) echo "Usage: ./install.sh [-s (skip wifi)] [-f (only add missing .env parts)] [-w (wifi only - update WIFI_SSID/WIFI_PASS)]"; exit 1 ;;
+    esac
 done
 
 echo "====================================================="
@@ -56,6 +58,14 @@ prompt_user() {
 # --- 1. CONFIGURATION ---
 echo ""
 echo "--- Firmware Settings ---"
+
+# If user requested wifi-only mode, prompt for WIFI values and exit.
+if [ "$WIFI_ONLY" = true ]; then
+    prompt_user "WIFI_SSID" "WiFi Network Name" "false"
+    prompt_user "WIFI_PASS" "WiFi Password" "true"
+    echo "WiFi settings updated in $ENV_FILE. Exiting (wifi-only mode)."
+    exit 0
+fi
 
 if [ "$SKIP_WIFI" = false ]; then
     prompt_user "WIFI_SSID" "WiFi Network Name" "false"

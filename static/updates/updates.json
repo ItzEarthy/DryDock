@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.2.3",
+    "date": "2026-06-06",
+    "reflash_required": false,
+    "new_features": [
+      "Added Wifi only flag to build script to update only wifi settings without reflashing the entire firmware. Useful for quick network changes."
+    ]
+  },
+  {
     "version": "0.2.2",
     "date": "2026-05-01",
     "reflash_required": false,
