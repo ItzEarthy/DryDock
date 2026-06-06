@@ -63,7 +63,10 @@ echo "--- Firmware Settings ---"
 if [ "$WIFI_ONLY" = true ]; then
     prompt_user "WIFI_SSID" "WiFi Network Name" "false"
     prompt_user "WIFI_PASS" "WiFi Password" "true"
-    echo "WiFi settings updated in $ENV_FILE. Exiting (wifi-only mode)."
+    # Also refresh PI_IP so .env stays in sync when updating WiFi only
+    PI_IP=$(hostname -I | awk '{print $1}')
+    sed -i "/^PI_IP=/d" "$ENV_FILE" && echo "PI_IP=\"$PI_IP\"" >> "$ENV_FILE"
+    echo "WiFi and PI_IP updated in $ENV_FILE. Exiting (wifi-only mode)."
     exit 0
 fi
 
